@@ -8,3 +8,5 @@ venv
 dataset
 src/checkpoints
 notes.txt
+*.jpg
+*.png

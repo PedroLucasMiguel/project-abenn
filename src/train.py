@@ -81,6 +81,21 @@ for epoch in range(0, EPOCHS):
         model.train()
         pred = model(img)
         loss = criterion(pred, label)
+        
+        att = model.att.detach().cpu().numpy()
+        cam_normalized = np.zeros((att.shape[0], att.shape[2], att.shape[3]))
+
+        for i in range(att.shape[0]):
+            s = np.sum(att[i,0,:,:])
+            cam_normalized[i,:,:] = np.divide(att[i,0,:,:], s)
+
+        # EU NÃO SEI O QUE EU FAÇO COM O BATCH, ENTÃO ESTOU FAZENDO A MÉDIA DE TODOS OS BATCHS, SOCORRO
+        m = np.mean(cam_normalized, axis=0)
+
+        ce = 10*np.sum(m*np.log(m))
+
+        loss = loss - ce
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

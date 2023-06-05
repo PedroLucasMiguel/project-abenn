@@ -6,7 +6,10 @@ __pycache__/
 # Project related stuff
 venv
 dataset
+dataset*
 src/checkpoints
 notes.txt
 *.jpg
 *.png
+*.zip
+*.tif

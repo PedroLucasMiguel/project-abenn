@@ -9,13 +9,13 @@ from torchvision import transforms
 from model.densenet import DenseNet201ABENN
 warnings.filterwarnings("ignore", category=UserWarning) 
 
-f = torch.load("checkpoints/best3.pt")
+f = torch.load("checkpoints/best_covid.pth")
 
 new_dict = {}
 
 for key, value in f.items():
-    if 'classifier.last_conv_block' in key:
-        key = key.replace("classifier.last_conv_block", "last_conv_block")
+    if 'module.' in key:
+        key = key.replace("module.", "")
     new_dict[key] = value
 
-torch.save(new_dict, "best4.pt")
+torch.save(new_dict, "best_covid_2.pt")

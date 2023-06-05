@@ -9,7 +9,7 @@ from torchvision import transforms
 from model.densenet import DenseNet201ABENN
 warnings.filterwarnings("ignore", category=UserWarning) 
 
-IMG_NAME = "../dog2.png"
+IMG_NAME = "../covid3.png"
 
 device = "cpu"
 print(f"Using {device}")
@@ -30,8 +30,8 @@ input_batch = input_batch.to(device)
 
 # Construindo e carregando o treinamento do modelo
 baseline_model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-model = DenseNet201ABENN(baseline_model)
-model.load_state_dict(torch.load("checkpoints/best4.pt"))
+model = DenseNet201ABENN(baseline_model, 2)
+model.load_state_dict(torch.load("checkpoints/best_covid_2.pt"))
 model = model.to(device)
 
 print(model)
@@ -40,9 +40,9 @@ model.eval()
 
 # Obtendo a classificação do modelo e calculando o gradiente da maior classe
 outputs = model(input_batch)
-class_to_backprop = F.softmax(outputs).detach().cpu().numpy()[0].argmax()
-print("\nClassificação do modelo: {}".format("Gato" if class_to_backprop == 0 else "Cachorro"))
-outputs[:, class_to_backprop].backward()
+class_to_backprop = F.softmax(outputs[0]).detach().cpu().numpy()[0].argmax()
+print("\nClassificação do modelo: {}".format(class_to_backprop))
+outputs[0][:, class_to_backprop].backward()
 
 # Obtendo informações dos gradienttes e construindo o "heatmap"
 gradients = model.get_activations_gradient()

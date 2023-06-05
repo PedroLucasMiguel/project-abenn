@@ -1,5 +1,6 @@
 import json
 import torch
+import os
 from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim as optim
@@ -11,11 +12,20 @@ from model.densenet import DenseNet201ABENN
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) 
 
+'''
 K_FOLDS = 5
-EPOCHS = 10
-BATCH_SIZE = 128
+EPOCHS = 20
+BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 WEIGHT_DECAY = 0.1
+MOMENTUM = 0.9
+'''
+
+K_FOLDS = 5
+EPOCHS = 90
+BATCH_SIZE = 64
+LEARNING_RATE = 0.1
+WEIGHT_DECAY = 0.0001
 MOMENTUM = 0.9
 
 def reset_weights(model):
@@ -32,17 +42,19 @@ preprocess = transforms.Compose([
 ])
 
 # Carregando o dataset a partir da pasta
-dataset = datasets.ImageFolder("../dataset/", preprocess)
+dataset = datasets.ImageFolder("../dataset2/", preprocess)
 
 # Criando o dataset com split 80/20 (Perfeitamente balanceado)
-dataset_train, dataset_test = random_split(dataset, [0.8, 0.2])
+dataset_train, dataset_validation = random_split(dataset, [0.8, 0.2])
+#dataset_train, dataset_validation = random_split(dataset, [0.7, 0.3])
+#dataset_test, dataset_validation = random_split(dataset_validation, [0.15, 0.15])
 
 # Criando os "loaders" para o nosso conjunto de treino e validação
 trainloader = torch.utils.data.DataLoader(
                 dataset_train, 
                 batch_size=BATCH_SIZE)
 testloader = torch.utils.data.DataLoader(
-                dataset_test,
+                dataset_validation,
                 batch_size=BATCH_SIZE)
 
 # Utiliza GPU caso possível
@@ -51,14 +63,15 @@ print(f"Using {device} for training")
 
 # Cria o modelo, reseta os pesos e define o dispositivo de execução
 baseline = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-model = DenseNet201ABENN(baseline)
+model = DenseNet201ABENN(baseline, 10)
+#model = nn.DataParallel(model)
 model.to(device)
 
 # Definindo nossa função para o calculo de loss e o otimizador
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adamax(model.parameters(), lr=LEARNING_RATE)
-#optimizer = optim.SGD(model.parameters(), momentum=MOMENTUM, weight_decay=WEIGHT_DECAY, lr=LEARNING_RATE)
-#scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[30, 60], gamma=0.1)
+#optimizer = optim.Adamax(model.parameters(), lr=LEARNING_RATE)
+optimizer = optim.SGD(model.parameters(), momentum=MOMENTUM, weight_decay=WEIGHT_DECAY, lr=LEARNING_RATE)
+scheduler = optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[30, 60], gamma=0.1)
 
 # Melhor resultado da métrica F1 (utilizado no processo de checkpoint)
 best_f1 = 0
@@ -100,7 +113,7 @@ for epoch in range(0, EPOCHS):
         loss.backward()
         optimizer.step()
         
-    #scheduler.step()
+    scheduler.step()
         
     accuracy = []
     precision = []
@@ -121,9 +134,9 @@ for epoch in range(0, EPOCHS):
             label_cpu = label.cpu()
             predicted_cpu = predicted.cpu()
             # Calculando as métricas
-            precision.append(precision_score(label_cpu, predicted_cpu))
-            recall.append(recall_score(label_cpu, predicted_cpu))
-            f1.append(f1_score(label_cpu, predicted_cpu))
+            precision.append(precision_score(label_cpu, predicted_cpu, average="macro"))
+            recall.append(recall_score(label_cpu, predicted_cpu, average="macro"))
+            f1.append(f1_score(label_cpu, predicted_cpu, average="macro"))
             accuracy.append(accuracy_score(label_cpu, predicted_cpu))
 
     # Apresentando as métricas
@@ -139,10 +152,14 @@ for epoch in range(0, EPOCHS):
         
     # Se o resultado possuir a melhor medida F de todo o processo, salve o treinamento
     if f1 > best_f1:
-        print(f"\nSaving saving training for Epoch={epoch}")
+        print(f"\nSaving saving training for Epoch={epoch+1}")
         best_f1 = f1
-        torch.save(model.state_dict(), f"checkpoints/e_{epoch}_savestate.pt")
-        best_f1_file_name = f"e_{epoch}_savestate.pth"
+        torch.save(model.state_dict(), f"checkpoints/e_{epoch+1}_savestate.pth")
+
+        if best_f1_file_name != "":
+            os.remove("checkpoints/{}".format(best_f1_file_name))
+
+        best_f1_file_name = f"e_{epoch+1}_savestate.pth"
 
     metrics_json[epoch+1] = {
         "Accuracy": accuracy,

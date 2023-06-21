@@ -9,7 +9,7 @@ from torchvision import transforms
 from model.densenet import DenseNet201ABENN
 warnings.filterwarnings("ignore", category=UserWarning) 
 
-f = torch.load("checkpoints/best_covid.pth")
+f = torch.load("checkpoints/e_7_covid_savestate.pth")
 
 new_dict = {}
 
@@ -18,4 +18,4 @@ for key, value in f.items():
         key = key.replace("module.", "")
     new_dict[key] = value
 
-torch.save(new_dict, "best_covid_2.pt")
+torch.save(new_dict, "best_covid_full.pth")

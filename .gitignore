@@ -8,6 +8,9 @@ venv
 dataset
 dataset*
 src/checkpoints
+samples
+pcam_dataset
+.hypothesis
 notes.txt
 *.jpg
 *.png

@@ -209,7 +209,6 @@ class DenseNet201ABENN(nn.Module):
         rx = F.relu(rx, inplace=True)
         rx = F.adaptive_avg_pool2d(rx, (1,1))
 
-        # TODO - Não acho que isso vai rolar :/
         if rx.requires_grad:
             rx.register_hook(self.gradients_hook)
 

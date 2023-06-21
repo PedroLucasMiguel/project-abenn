@@ -17,12 +17,13 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # Criando a instância do Lime
 explainer = lime_image.LimeImageExplainer()
 
-IMG_NAME = "../covid3.png"
+IMG_NAME = "../covid.jpeg"
 
 # Definindo processos de pré-processamento
 def get_pil_transform(): 
     transf = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
     ])    
 
     return transf
@@ -54,7 +55,7 @@ img = get_image(IMG_NAME)
 # Construindo e carregando o treinamento do modelo
 baseline_model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
 model = DenseNet201ABENN(baseline_model, 2)
-model.load_state_dict(torch.load("checkpoints/best_covid_2.pt"))
+model.load_state_dict(torch.load("checkpoints/best_covid_full.pth"))
 model = model.to(device)
 
 # Função de "classificação"

@@ -17,13 +17,12 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # Criando a instância do Lime
 explainer = lime_image.LimeImageExplainer()
 
-IMG_NAME = "../covid.jpeg"
+IMG_NAME = "../samples/poke.png"
 
 # Definindo processos de pré-processamento
 def get_pil_transform(): 
     transf = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.Resize((224, 224)),
     ])    
 
     return transf
@@ -55,7 +54,7 @@ img = get_image(IMG_NAME)
 # Construindo e carregando o treinamento do modelo
 baseline_model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
 model = DenseNet201ABENN(baseline_model, 2)
-model.load_state_dict(torch.load("checkpoints/best_covid_full.pth"))
+model.load_state_dict(torch.load("checkpoint_cat_dog/best_model_10_f1=0.9910.pt"))
 model = model.to(device)
 
 # Função de "classificação"
@@ -71,9 +70,7 @@ def classify_func(img):
 # Criando a imagem com a explicação e apresentando ela em um plot
 explanation = explainer.explain_instance(np.array(pill_transf(img)), classify_func, top_labels=1, hide_color=0, num_samples=2000)
 print("\nClassificação do modelo: {}\n".format(explanation.top_labels[0]))
-temp, mask = explanation.get_image_and_mask(explanation.top_labels[0], positive_only=True, num_features=5, hide_rest=False)
+temp, mask = explanation.get_image_and_mask(explanation.top_labels[0], positive_only=False, num_features=5, hide_rest=False)
 img_boundry1 = mark_boundaries(temp/255.0, mask)
-o_img = np.array(img)
-img_boundry1 = cv2.resize(img_boundry1, dsize=(o_img.shape[1], o_img.shape[0]), interpolation=cv2.INTER_CUBIC)
 plt.imshow(img_boundry1)
-plt.show()
+plt.savefig("../output/lime.jpg")

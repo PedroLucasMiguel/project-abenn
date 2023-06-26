@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning) 
 
 EPOCHS = 10
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 LEARNING_RATE = 0.0001
 
 N_CLASSES = 2
@@ -30,8 +30,8 @@ def get_datasets():
 
     # Definindo as transformações que precisam ser feitas no conjunto de imagens
     preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.Resize((224, 224)),
+        #transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
@@ -94,6 +94,7 @@ def train(local_rank, **kwargs):
         "accuracy": Accuracy(),
         "precision": Precision(),
         "recall": Recall(),
+        "f1": (Precision(average=False) * Recall(average=False) * 2 / (Precision(average=False) + Recall(average=False))).mean(),
         "loss": Loss(criterion)
     }
 
@@ -155,12 +156,12 @@ def train(local_rank, **kwargs):
 
 
     model_checkpoint = ModelCheckpoint(
-        "checkpoint",
+        "checkpoint_covid",
         require_empty=False,
         n_saved=1,
         filename_prefix="best",
         score_function=score_function,
-        score_name="accuracy",
+        score_name="f1",
         global_step_transform=global_step_from_engine(trainer),
     )
     

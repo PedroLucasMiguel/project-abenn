@@ -8,6 +8,8 @@ venv
 dataset
 dataset*
 src/checkpoints
+src/checkpoint_cat_dog
+src/checkpoint_covid
 samples
 pcam_dataset
 .hypothesis

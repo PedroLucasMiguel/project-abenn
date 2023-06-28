@@ -83,8 +83,8 @@ def get_grad_cam(class_to_backprop:int = 0, img = None):
 
     return heatmap, img, prob1
 
-h1, i1, p1 = get_grad_cam(0)
-h2, i2, p2 = get_grad_cam(0, i1)
+h1, i1, p1 = get_grad_cam(1)
+h2, i2, p2 = get_grad_cam(1, i1)
 
 de = np.cov(h2, h1)
 nu1 = np.std(h2)
@@ -105,3 +105,5 @@ adcc = 3*(((1/m1) + (1/1-m2) + (1/1-m3))**-1)
 
 print(m1,m2,m3, adcc)
 
+cv2.imwrite("../output/i1.png", i1)
+cv2.imwrite("../output/i2.png", i2)

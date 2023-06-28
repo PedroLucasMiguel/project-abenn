@@ -9,7 +9,7 @@ from torchvision import transforms
 from model.densenet import DenseNet201ABENN
 warnings.filterwarnings("ignore", category=UserWarning) 
 
-IMG_NAME = "../samples/poke.png"
+IMG_NAME = "../samples/han.png"
 
 device = "cpu"
 print(f"Using {device}")
@@ -18,7 +18,7 @@ img = Image.open(IMG_NAME).convert("RGB")
 
 # Transformações da imagem de entrada
 preprocess = transforms.Compose([
-    transforms.Resize((224,224)),
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
@@ -31,7 +31,7 @@ input_batch = input_batch.to(device)
 # Construindo e carregando o treinamento do modelo
 baseline_model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
 model = DenseNet201ABENN(baseline_model, 2)
-model.load_state_dict(torch.load("checkpoint_cat_dog/best_model_10_f1=0.9910.pt"))
+model.load_state_dict(torch.load("c/fbest_model_3_f1=1.0000.pt"))
 model = model.to(device)
 
 model.eval()
@@ -62,7 +62,7 @@ heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
 heatmap = np.uint8(255 * heatmap)
 heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0])) 
 heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-superimposed_img = heatmap * 0.3 + img
+superimposed_img = heatmap * 0.6 + img
 cv2.imwrite("../output/gradient.jpg", heatmap)
 final_img = np.concatenate((img, superimposed_img), axis=1)
 cv2.imwrite("../output/map.jpg", final_img)

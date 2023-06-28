@@ -1,4 +1,7 @@
 import torch
+import PIL
+import numpy as np
+from matplotlib import pyplot as plt
 from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim as optim
@@ -26,7 +29,7 @@ N_CLASSES = 2
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-def get_datasets():
+def get_datasets(dataset_dir:str):
 
     # Definindo as transformações que precisam ser feitas no conjunto de imagens
     preprocess = transforms.Compose([
@@ -36,15 +39,15 @@ def get_datasets():
     ])
 
     # Carregando o dataset a partir da pasta
-    dataset = datasets.ImageFolder("../dataset/", preprocess)
+    dataset = datasets.ImageFolder(dataset_dir, preprocess)
 
     # Criando o dataset com split 80/20 (Perfeitamente balanceado)
     dataset_train, dataset_validation = random_split(dataset, [0.8, 0.2])
 
-    return dataset_train, dataset_validation
+    return dataset
 
-def get_dataflow():
-    train_dataset, val_dataset = get_datasets()
+def get_dataflow(dataset_dir:str):
+    train_dataset, val_dataset = get_datasets(dataset_dir)
 
     train_loader = idist.auto_dataloader(
         train_dataset,
@@ -170,7 +173,9 @@ def train(local_rank, **kwargs):
 
 
 if __name__ == "__main__":
-    backend = "nccl"  # torch native distributed configuration on multiple GPUs
+    #backend = "nccl"  # torch native distributed configuration on multiple GPUs
 
-    with idist.Parallel(backend=backend) as parallel:
-        parallel.run(train)
+    #with idist.Parallel(backend=backend) as parallel:
+    #    parallel.run(train)
+
+    show_dataset(get_datasets("../datasets/UCSB"))

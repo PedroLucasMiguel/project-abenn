@@ -214,7 +214,7 @@ class DenseNet201ABENN(nn.Module):
 
         rx = self.classifier(rx)
 
-        return rx, self.att
+        return rx
     
 if __name__ == "__main__":
 

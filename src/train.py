@@ -11,15 +11,19 @@ import cv2
 from torchvision import transforms
 from torchvision import datasets
 from model.densenet import DenseNet201ABENN
-from torch.optim.lr_scheduler import MultiStepLR
+from model.densenet_baseline import DenseNetGradCam
+from cam_metrics import get_cam_metrics
 
-from ignite.engine import Engine, Events
+from ignite.engine import Engine, Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.metrics import Accuracy, Precision, Recall, Loss
 from ignite.handlers import ModelCheckpoint
 from ignite.contrib.handlers import global_step_from_engine
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 
-EPOCHS = 1
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning) 
+
+EPOCHS = 10
 BATCH_SIZE = 8
 LEARNING_RATE = 0.001
 WEIGHT_DECAY = 0.0001
@@ -38,7 +42,6 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
     augmented_dataset_path = dataset_dir+"_aug"
 
     try:
-
         os.mkdir(augmented_dataset_path)
         for c in classes:
             os.mkdir(f"{augmented_dataset_path}/{c}/")
@@ -67,12 +70,16 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
                 j += 1
 
         print("The Dataset was augmented succesfully")
+
     except OSError as error:
         print("The Dataset is already augmented")
 
     return augmented_dataset_path
 
 def get_dataset(dataset_dir:str):
+
+    # TODO - Separar 15% do dataset, de preferencia de forma "balanceada" a fim de que nós possamos realizar a obtenção das métricas
+    # de qualidade de um CAM. O uso das imagens "augmentadas" não parece colaborar...
 
     # Definindo as transformações que precisam ser feitas no conjunto de imagens
     preprocess = transforms.Compose([
@@ -88,7 +95,8 @@ def get_dataset(dataset_dir:str):
 
 def get_dataflow(dataset):
 
-    train, val = random_split(dataset, [0.8, 0.2])
+    train, val = random_split(dataset, [0.7, 0.3])
+    val, test = random_split(val, [0.5, 0.5])
 
     train_loader = torch.utils.data.DataLoader(
         train,
@@ -104,51 +112,42 @@ def get_dataflow(dataset):
         pin_memory=True,
     )
 
-    return train_loader, val_loader
-    
-def get_model():
-    baseline = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-    model = DenseNet201ABENN(baseline, N_CLASSES)
-    model = model.to(device)
+    test_loader = torch.utils.data.DataLoader(
+        test,
+        batch_size=1,
+        shuffle=True,
+    )
 
-    return model
+    return train_loader, val_loader, test_loader
 
 def get_optimizer_scheduler(model):
-    #optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY, momentum=MOMENTUM)
     optimizer = optim.Adamax(model.parameters(), lr=LEARNING_RATE)
-    scheduler = MultiStepLR(optimizer, milestones=[30, 60], gamma=0.1)
-    return optimizer, scheduler
+    return optimizer
 
 def get_criterion():
     return nn.CrossEntropyLoss().to(device)
 
-def procedure(model, output_folder_name:str):
-    dataset = get_dataset(get_augment_dataset("../datasets/UCSB", repeats=2))
-    model = model
-    optimizer, scheduler = get_optimizer_scheduler(model)
+def procedure(model,
+              loaders, 
+              output_folder_name:str, 
+              use_custom_train_step = None, 
+              use_custom_validation_step = None,
+              dataset_dir:str = "../datasets/UCSB"):
+    
+    
+    optimizer = get_optimizer_scheduler(model)
     criterion = get_criterion()
 
-    train_loader, val_loader = get_dataflow(dataset)
-
-    final_json = {}
-
-    # Pytorch-ignite bit
-    val_metrics = {
-        "accuracy": Accuracy(),
-        "precision": Precision(average='macro'),
-        "recall": Recall(average='macro'),
-        "f1": (Precision(average=False) * Recall(average=False) * 2 / (Precision(average=False) + Recall(average=False))).mean(),
-        "loss": Loss(criterion)
-    }
+    train_loader, val_loader, test_loader = loaders
 
     def train_step(engine, batch):
         model.train()
         optimizer.zero_grad()
         x, y = batch[0].to(device), batch[1].to(device)
         y_pred = model(x)
-        loss = criterion(y_pred[0], y)
+        loss = criterion(y_pred, y)
 
-        att = y_pred[1].detach()
+        att = model.att.detach()
         att = cp.asarray(att)
         cam_normalized = cp.zeros((att.shape[0], att.shape[2], att.shape[3]))
 
@@ -165,7 +164,6 @@ def procedure(model, output_folder_name:str):
         
         loss.backward()
         optimizer.step()
-        #scheduler.step()
 
         return loss.item()
     
@@ -174,11 +172,28 @@ def procedure(model, output_folder_name:str):
         with torch.no_grad():
             x, y = batch[0].to(device), batch[1].to(device)
             y_pred = model(x)
-            return y_pred[0], y
+            return y_pred, y
 
+    final_json = {}
 
-    trainer = Engine(train_step)
-    val_evaluator = Engine(validation_step)
+    # Pytorch-ignite bit
+    val_metrics = {
+        "accuracy": Accuracy(),
+        "precision": Precision(average='macro'),
+        "recall": Recall(average='macro'),
+        "f1": (Precision(average=False) * Recall(average=False) * 2 / (Precision(average=False) + Recall(average=False))).mean(),
+        "loss": Loss(criterion)
+    }
+
+    if use_custom_train_step:
+        trainer = Engine(train_step)
+    else:
+        trainer = create_supervised_trainer(model, optimizer, criterion, device)
+
+    if use_custom_validation_step:
+        val_evaluator = Engine(validation_step)
+    else:
+        val_evaluator = create_supervised_evaluator(model, val_metrics, device)
 
     for name, metric in val_metrics.items():
         metric.attach(val_evaluator, name)
@@ -198,13 +213,13 @@ def procedure(model, output_folder_name:str):
         print(f"Validation Results - Epoch[{trainer.state.epoch}] {final_json[trainer.state.epoch]}")
 
     def score_function(engine):
-        return engine.state.metrics["accuracy"]
+        return engine.state.metrics["f1"]
 
     model_checkpoint = ModelCheckpoint(
-        output_folder_name,
+        f"../output/{output_folder_name}_TRAIN",
         require_empty=False,
         n_saved=1,
-        filename_prefix=f"best",
+        filename_prefix=f"{dataset_dir.split('/')[-1]}",
         score_function=score_function,
         score_name="f1",
         global_step_transform=global_step_from_engine(trainer),
@@ -214,10 +229,13 @@ def procedure(model, output_folder_name:str):
 
     trainer.run(train_loader, max_epochs=EPOCHS)
 
-    with open(f"{output_folder_name}/training.json", "w") as hun:
-        print(final_json)
-        json.dump(final_json, hun)
-    
+    with open(f"../output/{output_folder_name}_TRAIN/training_{dataset_dir.split('/')[-1]}.json", "w") as f:
+        json.dump(final_json, f)
+
+    model.load_state_dict(torch.load(model_checkpoint.last_checkpoint))
+
+    get_cam_metrics(model, output_folder_name, test_loader.sampler.data_source.dataset.dataset.imgs)
+
 
 if __name__ == "__main__":
 
@@ -227,10 +245,11 @@ if __name__ == "__main__":
 
     model2 = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
     model2.classifier = nn.Linear(in_features=1920, out_features=2, bias=True)
+    model2 = DenseNetGradCam(model2)
     model2.to(device)
-    print(model2.classifier)
 
-    models = [(model1, "ABN"), (model2, "BASE")]
+    dataset = get_dataset(get_augment_dataset("../datasets/UCSB", repeats=2))
+    loaders = get_dataflow(dataset)
 
-    for model in models:
-        procedure(model[0], model[1])
+    procedure(model1, loaders, "ABN", True, True)
+    procedure(model2, loaders, "DENSE", False, False)

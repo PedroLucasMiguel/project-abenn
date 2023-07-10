@@ -7,11 +7,7 @@ __pycache__/
 venv
 dataset
 dataset*
-src/checkpoints
-src/checkpoint_cat_dog
-src/checkpoint_covid
-src/c
-src/checkpoint
+output
 samples
 pcam_dataset
 .hypothesis

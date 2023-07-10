@@ -31,7 +31,7 @@ input_batch = input_batch.to(device)
 # Construindo e carregando o treinamento do modelo
 baseline_model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
 model = DenseNet201ABENN(baseline_model, 2)
-model.load_state_dict(torch.load("c/fbest_model_3_f1=1.0000.pt"))
+model.load_state_dict(torch.load("ABN/UCSB_model_1_f1=0.8011.pt"))
 model = model.to(device)
 
 model.eval()

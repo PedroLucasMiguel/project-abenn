@@ -47,7 +47,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 
     prob1 = prob[0][class_to_backprop]
 
-    print("\nClassificação do modelo: {} | Esperado: {}".format(prob.argmax(), class_to_backprop))
+    print("Classificação do modelo: {} | Esperado: {}".format(prob.argmax(), class_to_backprop))
     outputs[:, class_to_backprop].backward()
 
     # Obtendo informações dos gradienttes e construindo o "heatmap"
@@ -78,7 +78,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 
     return heatmap, img, prob1
 
-def get_cam_metrics(model, identifier, imgs_array):
+def get_cam_metrics(model, identifier, imgs_dir):
 
     metrics_json = {}
     output_folder = f"../output/{identifier}"
@@ -88,10 +88,15 @@ def get_cam_metrics(model, identifier, imgs_array):
     except OSError as error:
         print("a")
 
-    for img, c in imgs_array:
+    imgs_array = os.listdir(imgs_dir)
+    print(imgs_dir)
 
-        h1, i1, p1 = get_grad_cam(model, c, img, None)
-        h2, i2, p2 = get_grad_cam(model, c, img, i1)
+    for img in imgs_array:
+
+        c = int(img.split("/")[-1].split("_")[0])
+
+        h1, i1, p1 = get_grad_cam(model, c, imgs_dir + "/" + img, None)
+        h2, i2, p2 = get_grad_cam(model, c, imgs_dir + "/" + img, i1)
 
         de = np.cov(h2, h1)
         nu1 = np.std(h2)
@@ -106,13 +111,14 @@ def get_cam_metrics(model, identifier, imgs_array):
         m2 = m2_1.transform(h1)
         m2 = np.mean(m2)
 
-        m3 = (max(0, p1-p2)/p1)*100
+        #m3 = (max(0, p1-p2)/p1)*100
+        m3 = (max(0, p1-p2)/p1)
 
-        adcc = 3*(((1/m1) + (1/1-m2) + (1/1-m3))**-1)
+        adcc = 3*((1/m1) + (1/1-m2) + (1/1-m3))**-1
 
-        print("M1: {} | M2: {} | M3: {} | ADCC: {}".format(m1,m2,m3,adcc))
+        print("Coherency (HB): {} | Complexity (LB): {} | Average Drop: {} | ADCC: {}".format(m1,m2,m3,adcc))
         img_name = img.split('/')[-1]
-        metrics_json[img_name] = {"m1": float(m1), "m2": float(m2), "m3": float(m3), "adcc": float(adcc)}
+        metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3), "adcc": float(adcc)}
 
         #cv2.imwrite(f"{output_folder}/i1_{img_name}.png", i1)
         #cv2.imwrite(f"{output_folder}/i2_{img_name}.png", i2)

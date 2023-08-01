@@ -3,6 +3,7 @@ import torch
 import json
 import shutil
 import numpy as np
+import random
 from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim as optim
@@ -29,7 +30,7 @@ LEARNING_RATE = 0.001
 WEIGHT_DECAY = 0.0001
 MOMENTUM = 0.9
 
-N_CLASSES = 2
+N_CLASSES = 3
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -39,23 +40,38 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
     classes = os.listdir(dataset_dir)
     classes.sort()
 
-    augmented_dataset_path = dataset_dir+"_aug"
+    augmented_dataset_path = dataset_dir + "_aug"
+    augmented_dataset_test_path = augmented_dataset_path + "/test/"
+    augmented_dataset_train_path = augmented_dataset_path + "/train/"
 
     try:
         os.mkdir(augmented_dataset_path)
+        os.mkdir(f"{augmented_dataset_test_path}")
+        os.mkdir(f"{augmented_dataset_train_path}")
+
         for c in classes:
-            os.mkdir(f"{augmented_dataset_path}/{c}/")
+            os.mkdir(f"{augmented_dataset_train_path}/{c}/")
 
         # Copiando as imagens originais para o novo diretório
         for c in classes:
             imgs = os.listdir(f"{dataset_dir}/{c}")
 
+            test_imgs = round(len(imgs) * 0.15)
+            print(f"Augmentation - {test_imgs} will be selected to from the class {c} to test!")
+            selected_test_imgs_counter = 0
+
+            # Copiando todas as imagens para o caminho de teste
             for img in imgs:
-                shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_path}/{c}/{img}")
+                # Selecionando imagens aleatóriamente para colocar na pasta de teste
+                if bool(random.getrandbits(1)) and selected_test_imgs_counter < test_imgs:
+                    shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_test_path}/{classes.index(c)}_{selected_test_imgs_counter}.png")
+                    selected_test_imgs_counter += 1
+
+                shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_train_path}/{c}/{img}")
         
         j = 0
         
-        for i in range(repeats):
+        for _ in range(repeats):
             # Criando as novas imagens
             preprocess = transforms.Compose([
                 transforms.ColorJitter(hue=0.05, saturation=0.05),
@@ -63,10 +79,10 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
                 transforms.RandomRotation(20),
             ])
 
-            dataset = datasets.ImageFolder(augmented_dataset_path, preprocess)
+            dataset = datasets.ImageFolder(augmented_dataset_train_path, preprocess)
             
-            for i, c in dataset:
-                cv2.imwrite(f"{augmented_dataset_path}/{classes[c]}/{j}.png", np.asarray(i))
+            for d_img, label in dataset:
+                cv2.imwrite(f"{augmented_dataset_train_path}/{classes[label]}/{j}.png", np.asarray(d_img))
                 j += 1
 
         print("The Dataset was augmented succesfully")
@@ -89,14 +105,13 @@ def get_dataset(dataset_dir:str):
     ])
 
     # Carregando o dataset a partir da pasta
-    dataset = datasets.ImageFolder(dataset_dir, preprocess)
+    dataset = datasets.ImageFolder(dataset_dir + "/train/", preprocess)
 
     return dataset
 
 def get_dataflow(dataset):
 
-    train, val = random_split(dataset, [0.7, 0.3])
-    val, test = random_split(val, [0.5, 0.5])
+    train, val = random_split(dataset, [0.8, 0.2])
 
     train_loader = torch.utils.data.DataLoader(
         train,
@@ -112,13 +127,7 @@ def get_dataflow(dataset):
         pin_memory=True,
     )
 
-    test_loader = torch.utils.data.DataLoader(
-        test,
-        batch_size=1,
-        shuffle=True,
-    )
-
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader
 
 def get_optimizer_scheduler(model):
     optimizer = optim.Adamax(model.parameters(), lr=LEARNING_RATE)
@@ -130,15 +139,16 @@ def get_criterion():
 def procedure(model,
               loaders, 
               output_folder_name:str, 
-              use_custom_train_step = None, 
-              use_custom_validation_step = None,
-              dataset_dir:str = "../datasets/UCSB"):
+              use_custom_train_step:bool = False, 
+              use_custom_validation_step:bool = True,
+              dataset_dir:str = "../datasets/NHL",
+              test_dataset_dir:str="../datasets/NHL_aug/test/"):
     
     
     optimizer = get_optimizer_scheduler(model)
     criterion = get_criterion()
 
-    train_loader, val_loader, test_loader = loaders
+    train_loader, val_loader = loaders
 
     def train_step(engine, batch):
         model.train()
@@ -229,12 +239,14 @@ def procedure(model,
 
     trainer.run(train_loader, max_epochs=EPOCHS)
 
+    print(f"\nTrain finished for model {model.__class__.__name__}")
+
     with open(f"../output/{output_folder_name}_TRAIN/training_{dataset_dir.split('/')[-1]}.json", "w") as f:
         json.dump(final_json, f)
 
     model.load_state_dict(torch.load(model_checkpoint.last_checkpoint))
 
-    get_cam_metrics(model, output_folder_name, test_loader.sampler.data_source.dataset.dataset.imgs)
+    get_cam_metrics(model, output_folder_name, test_dataset_dir)
 
 
 if __name__ == "__main__":
@@ -244,11 +256,11 @@ if __name__ == "__main__":
     model1 = model1.to(device)
 
     model2 = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-    model2.classifier = nn.Linear(in_features=1920, out_features=2, bias=True)
+    model2.classifier = nn.Linear(in_features=1920, out_features=N_CLASSES, bias=True)
     model2 = DenseNetGradCam(model2)
     model2.to(device)
 
-    dataset = get_dataset(get_augment_dataset("../datasets/UCSB", repeats=2))
+    dataset = get_dataset(get_augment_dataset("../datasets/LA", repeats=2))
     loaders = get_dataflow(dataset)
 
     procedure(model1, loaders, "ABN", True, True)

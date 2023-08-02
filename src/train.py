@@ -30,7 +30,7 @@ LEARNING_RATE = 0.001
 WEIGHT_DECAY = 0.0001
 MOMENTUM = 0.9
 
-N_CLASSES = 3
+N_CLASSES = 2
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -40,7 +40,10 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
     classes = os.listdir(dataset_dir)
     classes.sort()
 
-    augmented_dataset_path = dataset_dir + "_aug"
+    N_CLASSES = len(classes)
+    print(f"Augmentation - The current dataset have {N_CLASSES} classes")
+
+    augmented_dataset_path = f"{N_CLASSES}_" + dataset_dir + "_aug"
     augmented_dataset_test_path = augmented_dataset_path + "/test/"
     augmented_dataset_train_path = augmented_dataset_path + "/train/"
 
@@ -57,7 +60,7 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
             imgs = os.listdir(f"{dataset_dir}/{c}")
 
             test_imgs = round(len(imgs) * 0.15)
-            print(f"Augmentation - {test_imgs} will be selected to from the class {c} to test!")
+            print(f"Augmentation - {test_imgs} images will be selected to from the class {c} to test!")
             selected_test_imgs_counter = 0
 
             # Copiando todas as imagens para o caminho de teste
@@ -85,17 +88,14 @@ def get_augment_dataset(dataset_dir:str, repeats:int):
                 cv2.imwrite(f"{augmented_dataset_train_path}/{classes[label]}/{j}.png", np.asarray(d_img))
                 j += 1
 
-        print("The Dataset was augmented succesfully")
+        print("Augmentation - The Dataset was augmented succesfully")
 
     except OSError as error:
-        print("The Dataset is already augmented")
+        print("Augmentation - The Dataset is already augmented")
 
     return augmented_dataset_path
 
 def get_dataset(dataset_dir:str):
-
-    # TODO - Separar 15% do dataset, de preferencia de forma "balanceada" a fim de que nós possamos realizar a obtenção das métricas
-    # de qualidade de um CAM. O uso das imagens "augmentadas" não parece colaborar...
 
     # Definindo as transformações que precisam ser feitas no conjunto de imagens
     preprocess = transforms.Compose([
@@ -251,6 +251,9 @@ def procedure(model,
 
 if __name__ == "__main__":
 
+    dataset = get_dataset(get_augment_dataset("../datasets/LA", repeats=2))
+    loaders = get_dataflow(dataset)
+
     baseline = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
     model1 = DenseNet201ABENN(baseline, N_CLASSES)
     model1 = model1.to(device)
@@ -259,9 +262,6 @@ if __name__ == "__main__":
     model2.classifier = nn.Linear(in_features=1920, out_features=N_CLASSES, bias=True)
     model2 = DenseNetGradCam(model2)
     model2.to(device)
-
-    dataset = get_dataset(get_augment_dataset("../datasets/LA", repeats=2))
-    loaders = get_dataflow(dataset)
 
     procedure(model1, loaders, "ABN", True, True)
     procedure(model2, loaders, "DENSE", False, False)

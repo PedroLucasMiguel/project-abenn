@@ -78,15 +78,15 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 
     return heatmap, img, prob1
 
-def get_cam_metrics(model, identifier, imgs_dir):
+def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
 
     metrics_json = {}
-    output_folder = f"../output/{identifier}"
+    output_folder = f"../output/{identifier}/{dataset_name}"
 
     try:
-        os.mkdir(f"../output/{identifier}")
+        os.mkdir(f"{output_folder}/cams/")
     except OSError as error:
-        print("a")
+        print("?")
 
     imgs_array = os.listdir(imgs_dir)
     print(imgs_dir)
@@ -120,8 +120,8 @@ def get_cam_metrics(model, identifier, imgs_dir):
         img_name = img.split('/')[-1]
         metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3), "adcc": float(adcc)}
 
-        #cv2.imwrite(f"{output_folder}/i1_{img_name}.png", i1)
-        #cv2.imwrite(f"{output_folder}/i2_{img_name}.png", i2)
+        cv2.imwrite(f"{output_folder}/cams/i1_{img_name}.png", i1)
+        cv2.imwrite(f"{output_folder}/cams/i2_{img_name}.png", i2)
 
-    with open(f"{output_folder}/{identifier}.json", "w") as f:
+    with open(f"{output_folder}/cam_metrics.json", "w") as f:
         json.dump(metrics_json, f)

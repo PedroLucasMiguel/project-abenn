@@ -42,12 +42,15 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
     model.eval()
 
     # Obtendo a classificação do modelo e calculando o gradiente da maior classe
-    outputs = model(input_batch)
+    if model.__class__.__name__ == "ResNet":
+        outputs = model(input_batch)[1]
+    else:
+        outputs = model(input_batch)
     prob = F.softmax(outputs).detach().cpu().numpy()
 
     prob1 = prob[0][class_to_backprop]
 
-    print("Classificação do modelo: {} | Esperado: {}".format(prob.argmax(), class_to_backprop))
+    print("Model classification: {} | Expected: {}".format(prob.argmax(), class_to_backprop))
     outputs[:, class_to_backprop].backward()
 
     # Obtendo informações dos gradienttes e construindo o "heatmap"
@@ -98,14 +101,13 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
         h1, i1, p1 = get_grad_cam(model, c, imgs_dir + "/" + img, None)
         h2, i2, p2 = get_grad_cam(model, c, imgs_dir + "/" + img, i1)
 
-        de = np.cov(h2, h1)
-        nu1 = np.std(h2)
-        nu2 = np.std(h1)
-        matrix = de/nu1*nu2
-        n_matrix = (matrix + 1) / 2
-        n_matrix = n_matrix / np.max(n_matrix)
+        denominator = np.cov(h2, h1)
+        numerator_1 = np.std(h2)
+        numerator_2 = np.std(h1)
+        matrix = denominator/numerator_1*numerator_2
+        normalized_matrix = (matrix-np.min(matrix))/(np.max(matrix)-np.min(matrix))
 
-        m1 = np.mean(n_matrix)
+        m1 = np.mean(normalized_matrix)
 
         m2_1 = Normalizer(norm='l1').fit(h1)
         m2 = m2_1.transform(h1)
@@ -116,7 +118,7 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
 
         adcc = 3*((1/m1) + (1/1-m2) + (1/1-m3))**-1
 
-        print("Coherency (HB): {} | Complexity (LB): {} | Average Drop: {} | ADCC: {}".format(m1,m2,m3,adcc))
+        print("Coherency (HB): {} | Complexity (LB): {} | Average Drop (LB): {} | ADCC (HB): {}".format(m1,m2,m3,adcc))
         img_name = img.split('/')[-1]
         metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3), "adcc": float(adcc)}
 

@@ -13,6 +13,7 @@ from torchvision import transforms
 from torchvision import datasets
 from model.densenet import DenseNet201ABENN
 from model.densenet_baseline import DenseNetGradCam
+from model.resnet_abn import resnet50
 from cam_metrics import get_cam_metrics
 
 from ignite.engine import Engine, Events, create_supervised_trainer, create_supervised_evaluator
@@ -23,12 +24,6 @@ from ignite.contrib.handlers.tqdm_logger import ProgressBar
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) 
-
-#EPOCHS = 10
-#BATCH_SIZE = 8
-#LEARNING_RATE = 0.001
-#WEIGHT_DECAY = 0.0001
-#MOMENTUM = 0.9
 
 N_CLASSES = 2
 
@@ -68,10 +63,9 @@ class ComparatorFramewok:
                                     self.__generate_augment_dataset(f"../datasets/{self.dataset_name}", augmentation_repeats)))
         else:
             self.loaders = self.__get_loaders(
-                                self.__get_dataset(f"../datasets/{self.dataset_name}"))
+                                    self.__get_dataset(
+                                        self.__convert_dataset(f"../datasets/{self.dataset_name}")))
 
-        
-        
         pass
     
     def set_custom_train_step(self, train_step):
@@ -79,6 +73,61 @@ class ComparatorFramewok:
 
     def set_custom_val_step(self, val_step):
         self.__validation_step = val_step
+
+    def __convert_dataset(self, dataset_dir:str):
+        # Criando estrutura para o novo dataset
+        classes = os.listdir(dataset_dir)
+        classes.sort()
+
+        N_CLASSES = len(classes)
+        print(f"Dataset conversion - The current dataset have {N_CLASSES} classes")
+
+        dataset_path = dataset_dir + f"_{N_CLASSES}_CV"
+        dataset_train_path = dataset_path + "/train/"
+        dataset_test_path = dataset_path + "/test/"
+        dataset_val_path = dataset_path + "/val/"
+        self.dataset_name = f"{self.dataset_name}_{N_CLASSES}_CV"
+
+        try:
+            os.mkdir(dataset_path)
+            os.mkdir(dataset_train_path)
+            os.mkdir(dataset_test_path)
+            os.mkdir(dataset_val_path)
+
+            for c in classes:
+                os.mkdir(f"{dataset_train_path}/{c}/")
+                os.mkdir(f"{dataset_val_path}/{c}/")
+
+            # Copiando as imagens originais para o novo diretório
+            for c in classes:
+                imgs = os.listdir(f"{dataset_dir}/{c}")
+
+                val_and_test_n_imgs = round(len(imgs) * 0.15)
+
+                print(f"Dataset conversion - {val_and_test_n_imgs} images will be selected to from the class {c} to validation and test!")
+                val_imgs_counter = 0
+                test_imgs_counter = 0
+
+                # Copiando todas as imagens para o caminho de teste
+                for img in imgs:
+                    # Selecionando imagens aleatóriamente para colocar na pasta de teste
+                    if bool(random.getrandbits(1)) and test_imgs_counter < val_and_test_n_imgs:
+                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_test_path}/{classes.index(c)}_{test_imgs_counter}.png")
+                        test_imgs_counter += 1
+                        continue
+
+                    elif bool(random.getrandbits(1)) and val_imgs_counter < val_and_test_n_imgs:
+                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_val_path}/{c}/{img}")
+                        val_imgs_counter += 1
+                        continue
+
+                    shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_train_path}/{c}/{img}")
+
+        except OSError as _:
+            print("Dataset conversion - The Dataset is already augmented")
+
+        return dataset_path
+
 
     def __generate_augment_dataset(self, dataset_dir:str, repeats:int):
 
@@ -92,30 +141,40 @@ class ComparatorFramewok:
         augmented_dataset_path = dataset_dir + f"_{N_CLASSES}_AUG"
         augmented_dataset_test_path = augmented_dataset_path + "/test/"
         augmented_dataset_train_path = augmented_dataset_path + "/train/"
+        augmented_dataset_val_path = augmented_dataset_path + "/val/"
         self.dataset_name = f"{self.dataset_name}_{N_CLASSES}_AUG"
 
         try:
             os.mkdir(augmented_dataset_path)
             os.mkdir(f"{augmented_dataset_test_path}")
             os.mkdir(f"{augmented_dataset_train_path}")
+            os.mkdir(f"{augmented_dataset_val_path}")
 
             for c in classes:
                 os.mkdir(f"{augmented_dataset_train_path}/{c}/")
+                os.mkdir(f"{augmented_dataset_val_path}/{c}/")
 
             # Copiando as imagens originais para o novo diretório
             for c in classes:
                 imgs = os.listdir(f"{dataset_dir}/{c}")
 
-                test_imgs = round(len(imgs) * 0.15)
-                print(f"Augmentation - {test_imgs} images will be selected to from the class {c} to test!")
-                selected_test_imgs_counter = 0
+                val_and_test_n_imgs = round(len(imgs) * 0.15)
+                print(f"Augmentation - {val_and_test_n_imgs} images will be selected to from the class {c} to validation and test!")
+                val_imgs_counter = 0
+                test_imgs_counter = 0
 
                 # Copiando todas as imagens para o caminho de teste
                 for img in imgs:
                     # Selecionando imagens aleatóriamente para colocar na pasta de teste
-                    if bool(random.getrandbits(1)) and selected_test_imgs_counter < test_imgs:
-                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_test_path}/{classes.index(c)}_{selected_test_imgs_counter}.png")
-                        selected_test_imgs_counter += 1
+                    if bool(random.getrandbits(1)) and test_imgs_counter < val_and_test_n_imgs:
+                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_test_path}/{classes.index(c)}_{test_imgs_counter}.png")
+                        test_imgs_counter += 1
+                        continue
+
+                    elif bool(random.getrandbits(1)) and val_imgs_counter < val_and_test_n_imgs:
+                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_val_path}/{c}/{img}")
+                        val_imgs_counter += 1
+                        continue
 
                     shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{augmented_dataset_train_path}/{c}/{img}")
             
@@ -137,7 +196,7 @@ class ComparatorFramewok:
 
             print("Augmentation - The Dataset was augmented succesfully")
 
-        except OSError as error:
+        except OSError as _:
             print("Augmentation - The Dataset is already augmented")
 
         return augmented_dataset_path
@@ -152,29 +211,27 @@ class ComparatorFramewok:
         ])
 
         # Carregando o dataset a partir da pasta
-        dataset = datasets.ImageFolder(dataset_dir + "/train/", preprocess)
+        return datasets.ImageFolder(dataset_dir + "/train/", preprocess), datasets.ImageFolder(dataset_dir + "/val/", preprocess)
 
-        return dataset
 
     def __get_loaders(self, dataset):
 
-        train, val = random_split(dataset, [0.8, 0.2])
-
         train_loader = torch.utils.data.DataLoader(
-            train,
+            dataset[0],
             batch_size=self.batch_size,
             shuffle=True,
             pin_memory=True,
         )
 
         val_loader = torch.utils.data.DataLoader(
-            val,
+            dataset[1],
             batch_size=self.batch_size,
             shuffle=True,
             pin_memory=True,
         )
 
         return train_loader, val_loader
+
 
     def __get_optimizer(self):
         optimizer = optim.Adamax(self.model.parameters(), lr=self.lr)
@@ -187,6 +244,7 @@ class ComparatorFramewok:
     
         dataset_dir = f"../datasets/{self.dataset_name}"
         test_dataset_dir = f"../datasets/{self.dataset_name}/test/"
+
         model = self.model
         train_loader, val_loader = self.loaders
 
@@ -255,61 +313,12 @@ class ComparatorFramewok:
             json.dump(final_json, f)
 
         model.load_state_dict(torch.load(model_checkpoint.last_checkpoint))
-
+        
         get_cam_metrics(model, output_folder_name, self.dataset_name, test_dataset_dir)
+
+        
 
 
 if __name__ == "__main__":
-
-    baseline = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-    model1 = DenseNet201ABENN(baseline, N_CLASSES)
-
-    cpf1 = ComparatorFramewok(model=model1, dataset_name="UCSB")
-
-    def train_step(engine, batch):
-            cpf1.model.train()
-            cpf1.optimizer.zero_grad()
-            x, y = batch[0].to(cpf1.device), batch[1].to(cpf1.device)
-            y_pred = cpf1.model(x)
-            loss = cpf1.criterion(y_pred, y)
-
-            att = cpf1.model.att.detach()
-            att = cp.asarray(att)
-            cam_normalized = cp.zeros((att.shape[0], att.shape[2], att.shape[3]))
-
-            for i in range(att.shape[0]):
-                s = cp.sum(att[i,0,:,:])
-                cam_normalized[i,:,:] = cp.divide(att[i,0,:,:], s)
-
-            # Realizando a média dos batches
-            m = cp.mean(cam_normalized, axis=0)
-
-            ce = 10*cp.sum(m*cp.log(m))
-
-            loss = loss - ce.item()
-            
-            loss.backward()
-            cpf1.optimizer.step()
-
-            return loss.item()
-        
-    def validation_step(engine, batch):
-        cpf1.model.eval()
-        with torch.no_grad():
-            x, y = batch[0].to(cpf1.device), batch[1].to(cpf1.device)
-            y_pred = cpf1.model(x)
-            return y_pred, y
-
-
-    cpf1.set_custom_train_step(train_step)
-    cpf1.set_custom_val_step(validation_step)
-
-    cpf1.procedure("ABN")
-
-
-    model2 = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-    model2.classifier = nn.Linear(in_features=1920, out_features=N_CLASSES, bias=True)
-    model2 = DenseNetGradCam(model2)
-
-    cpf2 = ComparatorFramewok(model=model2, dataset_name="UCSB")
-    cpf2.procedure("DENSENET")
+    
+    print(":)")

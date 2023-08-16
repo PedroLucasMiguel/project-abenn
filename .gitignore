@@ -12,6 +12,7 @@ samples
 pcam_dataset
 .hypothesis
 notes.txt
+src/model/checkpoints
 *.jpg
 *.png
 *.zip

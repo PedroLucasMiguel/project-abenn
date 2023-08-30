@@ -115,8 +115,13 @@ class _Transition(nn.Sequential):
         self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
 
 class DenseNet201ABENN(nn.Module):
-    def __init__(self, baseline_model, n_classes:int = 2, *args, **kwargs) -> None:
+    def __init__(self, baseline_model, n_classes:int = 2, freeze_training:bool = False, *args, **kwargs) -> None:
         super(DenseNet201ABENN, self).__init__()
+
+        if freeze_training:
+            print("DenseNet201ABNN - Training freezed")
+            for param in baseline_model.parameters():
+                param.requires_grad = False
 
         self.growth_rate = 32
 

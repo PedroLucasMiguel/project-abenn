@@ -70,7 +70,6 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
     heatmap = torch.mean(layer_output, dim=0).detach().numpy()
     heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
     heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
-    heatmap = np.float32(heatmap)
 
     for i in range(heatmap.shape[0]):
         for j in range(heatmap.shape[1]):
@@ -104,10 +103,14 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
         denominator = np.cov(h2, h1)
         numerator_1 = np.std(h2)
         numerator_2 = np.std(h1)
+
         matrix = denominator/numerator_1*numerator_2
         normalized_matrix = (matrix-np.min(matrix))/(np.max(matrix)-np.min(matrix))
 
         m1 = np.mean(normalized_matrix)
+
+        if np.isnan(m1):
+            m1 = 0.00001
 
         m2_1 = Normalizer(norm='l1').fit(h1)
         m2 = m2_1.transform(h1)

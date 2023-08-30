@@ -1,11 +1,13 @@
 from tv_framework import *
-from multiprocessing import Process
 
-def start_training(dn:str):
+EPOCHS = 10
+
+def start_training(dn:str, use_gpu_n:int):
+    n_classes = len(os.listdir(f"../datasets/{dn}"))
     baseline = torch.hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
-    model1 = DenseNet201ABENN(baseline, N_CLASSES)
+    model1 = DenseNet201ABENN(baseline, n_classes, False)
 
-    cpf1 = ComparatorFramewok(model=model1, dataset_name=dn, use_augmentation=False)
+    cpf1 = ComparatorFramewok(epochs=EPOCHS, model=model1, use_gpu_n=use_gpu_n, dataset_name=dn, use_augmentation=False)
 
     def train_step(engine, batch):
         cpf1.model.train()
@@ -50,8 +52,8 @@ def start_training(dn:str):
    #################################################################################################
     
     model2 = resnet50(True)
-    model2.fc = nn.Linear(512 * model2.block.expansion, N_CLASSES)
-    cpf2 = ComparatorFramewok(model=model2, dataset_name=dn, use_augmentation=False)
+    model2.fc = nn.Linear(512 * model2.block.expansion, n_classes)
+    cpf2 = ComparatorFramewok(epochs=EPOCHS, model=model2, use_gpu_n=use_gpu_n, dataset_name=dn, use_augmentation=False)
 
     def train_step2(engine, batch):
         cpf2.model.train()
@@ -81,14 +83,9 @@ def start_training(dn:str):
 
 
 if __name__ == "__main__":
-    dts = ["CR", "UCSB"]
+    dts1 = ["CR", "LA", "LG", "NHL", "UCSB"]
     procs = []
-
-    
-    for dn in dts:
-        p = Process(target=start_training, args=(dn,))
-        procs.append(p)
-        p.start()
-
-    for proc in procs:
-        proc.join()
+    device = False
+    last = dts1[0]
+    for dn in dts1:
+        start_training(dn, 0)

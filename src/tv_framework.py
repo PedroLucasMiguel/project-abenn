@@ -31,10 +31,11 @@ class ComparatorFramewok:
     def __init__(self,
                  epochs:int = 10,
                  batch_size:int = 8,
-                 lr:float = 0.001,
-                 weight_decay:float = 0.0001,
+                 lr:float = 0.0001, #lr:float = 0.0001,
+                 weight_decay:float = 0.1,
                  momentum:float = 0.9,
                  model:nn.Module = None,
+                 use_gpu_n:int = 0,
                  dataset_name:str = None,
                  use_augmentation:bool = True,
                  augmentation_repeats:int = 2) -> None:
@@ -45,9 +46,10 @@ class ComparatorFramewok:
         self.weight_decay = weight_decay
         self.momentum = momentum
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = f"cuda:{use_gpu_n}" if torch.cuda.is_available() else "cpu"
 
         self.model = model.to(self.device)
+        print(f"Using {self.device} for {model.__class__.__name__}")
         self.optimizer = self.__get_optimizer()
         self.criterion = self.__get_criterion()
         self.__train_step = None
@@ -235,6 +237,7 @@ class ComparatorFramewok:
 
     def __get_optimizer(self):
         optimizer = optim.Adamax(self.model.parameters(), lr=self.lr)
+        #optimizer = optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay, momentum=0.9)
         return optimizer
 
     def __get_criterion(self):

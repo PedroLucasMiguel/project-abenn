@@ -1,36 +1,30 @@
 import os
-import torch
+import cv2
 import json
+import torch
+import random
 import shutil
 import numpy as np
-import random
-from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim as optim
-import cupy as cp
-import cv2
-from torchvision import transforms
-from torchvision import datasets
-from model.densenet import DenseNet201ABENN
-from model.densenet_baseline import DenseNetGradCam
-from model.resnet_abn import resnet50
-from cam_metrics import get_cam_metrics
 
-from ignite.engine import Engine, Events, create_supervised_trainer, create_supervised_evaluator
-from ignite.metrics import Accuracy, Precision, Recall, Loss
+from torchvision import datasets
+from torchvision import transforms
+from cam_metrics import get_cam_metrics
 from ignite.handlers import ModelCheckpoint
 from ignite.contrib.handlers import global_step_from_engine
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
+from ignite.metrics import Accuracy, Precision, Recall, Loss
+from ignite.engine import Engine, Events, create_supervised_trainer, create_supervised_evaluator
 
+# Dealing with some annoying deprecation messages
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) 
-
-N_CLASSES = 2
 
 class ComparatorFramewok:
     def __init__(self,
                  epochs:int = 10,
-                 batch_size:int = 8,
+                 batch_size:int = 16,
                  lr:float = 0.0001, #lr:float = 0.0001,
                  weight_decay:float = 0.1,
                  momentum:float = 0.9,
@@ -40,23 +34,25 @@ class ComparatorFramewok:
                  use_augmentation:bool = True,
                  augmentation_repeats:int = 2) -> None:
         
+        # Hyper parameters
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
         self.weight_decay = weight_decay
         self.momentum = momentum
-
+        
+        # Model configuration
         self.device = f"cuda:{use_gpu_n}" if torch.cuda.is_available() else "cpu"
-
         self.model = model.to(self.device)
-        print(f"Using {self.device} for {model.__class__.__name__}")
+
+        # Training configuration
         self.optimizer = self.__get_optimizer()
         self.criterion = self.__get_criterion()
         self.__train_step = None
         self.__validation_step = None
 
+        # Dataset definition
         self.dataset_name = dataset_name
-
         self.use_augmentation = use_augmentation
 
         if self.use_augmentation:
@@ -81,14 +77,14 @@ class ComparatorFramewok:
         classes = os.listdir(dataset_dir)
         classes.sort()
 
-        N_CLASSES = len(classes)
-        print(f"Dataset conversion - The current dataset have {N_CLASSES} classes")
+        n_classes = len(classes)
+        print(f"Dataset conversion - The current dataset have {n_classes} classes")
 
-        dataset_path = dataset_dir + f"_{N_CLASSES}_CV"
+        dataset_path = dataset_dir + f"_{n_classes}_CV"
         dataset_train_path = dataset_path + "/train/"
         dataset_test_path = dataset_path + "/test/"
         dataset_val_path = dataset_path + "/val/"
-        self.dataset_name = f"{self.dataset_name}_{N_CLASSES}_CV"
+        self.dataset_name = f"{self.dataset_name}_{n_classes}_CV"
 
         try:
             os.mkdir(dataset_path)
@@ -96,34 +92,36 @@ class ComparatorFramewok:
             os.mkdir(dataset_test_path)
             os.mkdir(dataset_val_path)
 
+            total_imgs = 0
+
             for c in classes:
                 os.mkdir(f"{dataset_train_path}/{c}/")
                 os.mkdir(f"{dataset_val_path}/{c}/")
+                total_imgs += len(os.listdir(f"{dataset_dir}/{c}"))
 
-            # Copiando as imagens originais para o novo diretório
-            for c in classes:
+            print(f"Dataset conversion - N° of images in the dataset: {total_imgs}")    
+
+            val_split = test_split = round(total_imgs * 0.30)/2
+
+            val_imgs_counter = 0
+            test_imgs_counter = 0
+
+            for _ in range(total_imgs):
+                c = random.choice(classes)
                 imgs = os.listdir(f"{dataset_dir}/{c}")
+                img = np.random.choice(imgs)
 
-                val_and_test_n_imgs = round(len(imgs) * 0.15)
+                if bool(random.getrandbits(1)) and val_imgs_counter < val_split:
+                    shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_val_path}/{c}/{img}")
+                    val_imgs_counter += 1
+                    continue
 
-                print(f"Dataset conversion - {val_and_test_n_imgs} images will be selected to from the class {c} to validation and test!")
-                val_imgs_counter = 0
-                test_imgs_counter = 0
-
-                # Copiando todas as imagens para o caminho de teste
-                for img in imgs:
-                    # Selecionando imagens aleatóriamente para colocar na pasta de teste
-                    if bool(random.getrandbits(1)) and test_imgs_counter < val_and_test_n_imgs:
-                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_test_path}/{classes.index(c)}_{test_imgs_counter}.png")
-                        test_imgs_counter += 1
-                        continue
-
-                    elif bool(random.getrandbits(1)) and val_imgs_counter < val_and_test_n_imgs:
-                        shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_val_path}/{c}/{img}")
-                        val_imgs_counter += 1
-                        continue
-
-                    shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_train_path}/{c}/{img}")
+                elif bool(random.getrandbits(1)) and test_imgs_counter < test_split:
+                    shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_test_path}/{classes.index(c)}_{test_imgs_counter}.png")
+                    test_imgs_counter += 1
+                    continue
+                
+                shutil.copyfile(f"{dataset_dir}/{c}/{img}", f"{dataset_train_path}/{c}/{img}")
 
         except OSError as _:
             print("Dataset conversion - The Dataset is already augmented")
@@ -132,19 +130,18 @@ class ComparatorFramewok:
 
 
     def __generate_augment_dataset(self, dataset_dir:str, repeats:int):
-
         # Criando estrutura para o novo dataset
         classes = os.listdir(dataset_dir)
         classes.sort()
 
-        N_CLASSES = len(classes)
-        print(f"Augmentation - The current dataset have {N_CLASSES} classes")
+        n_classes = len(classes)
+        print(f"Augmentation - The current dataset have {n_classes} classes")
 
-        augmented_dataset_path = dataset_dir + f"_{N_CLASSES}_AUG"
+        augmented_dataset_path = dataset_dir + f"_{n_classes}_AUG"
         augmented_dataset_test_path = augmented_dataset_path + "/test/"
         augmented_dataset_train_path = augmented_dataset_path + "/train/"
         augmented_dataset_val_path = augmented_dataset_path + "/val/"
-        self.dataset_name = f"{self.dataset_name}_{N_CLASSES}_AUG"
+        self.dataset_name = f"{self.dataset_name}_{n_classes}_AUG"
 
         try:
             os.mkdir(augmented_dataset_path)
@@ -204,7 +201,6 @@ class ComparatorFramewok:
         return augmented_dataset_path
     
     def __get_dataset(self, dataset_dir:str):
-
         # Definindo as transformações que precisam ser feitas no conjunto de imagens
         preprocess = transforms.Compose([
             transforms.Resize((224, 224)),
@@ -217,7 +213,6 @@ class ComparatorFramewok:
 
 
     def __get_loaders(self, dataset):
-
         train_loader = torch.utils.data.DataLoader(
             dataset[0],
             batch_size=self.batch_size,
@@ -235,17 +230,25 @@ class ComparatorFramewok:
         return train_loader, val_loader
 
 
-    def __get_optimizer(self):
-        optimizer = optim.Adamax(self.model.parameters(), lr=self.lr)
-        #optimizer = optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay, momentum=0.9)
-        return optimizer
+    def __get_optimizer(self, optm_type:str = 'Adamax'):
+        match optm_type:
+            case 'Adamax':
+                return optim.Adamax(self.model.parameters(), lr=self.lr)
+
+            case 'RMSprop':
+                return optim.RMSprop(self.model.parameters(), lr=self.lr)
+            
+            case 'SGD':
+                return optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay, momentum=self.momentum)
+
+            case _:
+                print("Training Framework: Optimizer not supported\nDefaulting to Adamax...")
+                return optim.Adamax(self.model.parameters(), lr=self.lr)
 
     def __get_criterion(self):
         return nn.CrossEntropyLoss().to(self.device)
 
     def procedure(self, output_folder_name:str):
-    
-        dataset_dir = f"../datasets/{self.dataset_name}"
         test_dataset_dir = f"../datasets/{self.dataset_name}/test/"
 
         model = self.model
@@ -256,9 +259,9 @@ class ComparatorFramewok:
         # Pytorch-ignite bit
         val_metrics = {
             "accuracy": Accuracy(),
-            "precision": Precision(average='macro'),
-            "recall": Recall(average='macro'),
-            "f1": (Precision(average=False) * Recall(average=False) * 2 / (Precision(average=False) + Recall(average=False))).mean(),
+            "precision": Precision(average='weighted'),
+            "recall": Recall(average='weighted'),
+            "f1": (Precision(average='weighted') * Recall(average='weighted') * 2 / (Precision(average='weighted') + Recall(average='weighted'))),
             "loss": Loss(self.criterion)
         }
 
@@ -306,7 +309,7 @@ class ComparatorFramewok:
         
         val_evaluator.add_event_handler(Events.COMPLETED, model_checkpoint, {"model": model})
 
-        print(f"\nTraining the {model.__class__.__name__} model")
+        print(f"\nTraining the {model.__class__.__name__} model on GPU {self.device}")
 
         trainer.run(train_loader, max_epochs=self.epochs)
 
@@ -318,9 +321,6 @@ class ComparatorFramewok:
         model.load_state_dict(torch.load(model_checkpoint.last_checkpoint))
         
         get_cam_metrics(model, output_folder_name, self.dataset_name, test_dataset_dir)
-
-        
-
 
 if __name__ == "__main__":
     

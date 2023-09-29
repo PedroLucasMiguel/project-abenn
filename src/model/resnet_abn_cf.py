@@ -94,13 +94,13 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ResNet(nn.Module):
+class ResNetCf(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000):
         self.block = block
         self.gradients = None
         self.inplanes = 64
-        super(ResNet, self).__init__()
+        super(ResNetCf, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -115,12 +115,11 @@ class ResNet(nn.Module):
         self.att_conv   = nn.Conv2d(512 * block.expansion, num_classes, kernel_size=1, padding=0,
                                bias=False)
         self.bn_att2 = nn.BatchNorm2d(num_classes)
-        self.att_conv2  = nn.Conv2d(num_classes, num_classes, kernel_size=1, padding=0,
-                               bias=False)
+
         self.att_conv3  = nn.Conv2d(num_classes, 1, kernel_size=3, padding=1,
                                bias=False)
         self.bn_att3 = nn.BatchNorm2d(1)
-        self.att_gap = nn.AvgPool2d(14)
+
         self.sigmoid = nn.Sigmoid()
 
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, down_size=True)
@@ -159,11 +158,17 @@ class ResNet(nn.Module):
 
             return nn.Sequential(*layers)
 
-    def activations_hook(self, grad):
+    def gradients_hook(self, grad):
         self.gradients = grad
 
     def get_activations_gradient(self):
         return self.gradients
+    
+    def att_gradients_hook(self, grad):
+        self.att_gradients = grad
+
+    def get_att_gradient(self):
+        return self.att_gradients
     
     def get_activations(self, x):
         x = self.conv1(x)
@@ -175,20 +180,14 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
 
-        fe = x
-
         ax = self.bn_att(self.att_layer4(x))
         ax = self.relu(self.bn_att2(self.att_conv(ax)))
-        bs, cs, ys, xs = ax.shape
+
         self.att = self.sigmoid(self.bn_att3(self.att_conv3(ax)))
-        # self.att = self.att.view(bs, 1, ys, xs)
-        ax = self.att_conv2(ax)
-        ax = self.att_gap(ax)
-        ax = ax.view(ax.size(0), -1)
 
         rx = x * self.att
         rx = rx + x
-        per = rx
+
         rx = self.layer4(rx)
 
         return rx
@@ -204,83 +203,77 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
 
-        fe = x
-
         ax = self.bn_att(self.att_layer4(x))
         ax = self.relu(self.bn_att2(self.att_conv(ax)))
-        bs, cs, ys, xs = ax.shape
-        self.att = self.sigmoid(self.bn_att3(self.att_conv3(ax)))
-        # self.att = self.att.view(bs, 1, ys, xs)
-        ax = self.att_conv2(ax)
 
-        ax = self.att_gap(ax)
-        ax = ax.view(ax.size(0), -1)
+        self.att = self.sigmoid(self.bn_att3(self.att_conv3(ax)))
 
         rx = x * self.att
         rx = rx + x
-        per = rx
+
         rx = self.layer4(rx)
 
         if rx.requires_grad:
-            h = rx.register_hook(self.activations_hook)
+            h = rx.register_hook(self.gradients_hook)
 
         rx = self.avgpool(rx)
+
         rx = rx.view(rx.size(0), -1)
         rx = self.fc(rx)
 
-        return ax, rx, [self.att, fe, per]
+        return rx
 
 
-def resnet18(pretrained=False, **kwargs):
+def resnet18_cf(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    model = ResNetCf(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
     return model
 
 
-def resnet34(pretrained=False, **kwargs):
+def resnet34_cf(pretrained=False, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    model = ResNetCf(BasicBlock, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
     return model
 
 
-def resnet50(pretrained=False, **kwargs):
+def resnet50_cf(pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    model = ResNetCf(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), strict=False)
     return model
 
 
-def resnet101(pretrained=False, **kwargs):
+def resnet101_cf(pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
+    model = ResNetCf(Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
     return model
 
 
-def resnet152(pretrained=False, **kwargs):
+def resnet152_cf(pretrained=False, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
+    model = ResNetCf(Bottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
     return model

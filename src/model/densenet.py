@@ -212,10 +212,11 @@ class DenseNet201ABENN(nn.Module):
 
         # Para o grad-cam
         rx = F.relu(rx, inplace=True)
-        rx = F.adaptive_avg_pool2d(rx, (1,1))
 
         if rx.requires_grad:
             rx.register_hook(self.gradients_hook)
+
+        rx = F.adaptive_avg_pool2d(rx, (1,1))
 
         rx = self.classifier(rx)
 

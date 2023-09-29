@@ -46,6 +46,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
         outputs = model(input_batch)[1]
     else:
         outputs = model(input_batch)
+
     prob = F.softmax(outputs).detach().cpu().numpy()
 
     prob1 = prob[0][class_to_backprop]
@@ -54,6 +55,8 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
     outputs[:, class_to_backprop].backward()
 
     # Obtendo informações dos gradienttes e construindo o "heatmap"
+
+
     gradients = model.get_activations_gradient()
     gradients = torch.mean(gradients, dim=[0, 2, 3])
     layer_output = model.get_activations(input_batch)
@@ -88,7 +91,7 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
     try:
         os.mkdir(f"{output_folder}/cams/")
     except OSError as error:
-        print("?")
+        print("CAM Metrics - The folder already exists")
 
     imgs_array = os.listdir(imgs_dir)
     print(imgs_dir)
@@ -112,9 +115,9 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
         if np.isnan(m1):
             m1 = 0.00001
 
-        m2_1 = Normalizer(norm='l1').fit(h1)
-        m2 = m2_1.transform(h1)
+        m2 = Normalizer(norm='l1').transform(h1)
         m2 = np.mean(m2)
+        #print(m2)
 
         #m3 = (max(0, p1-p2)/p1)*100
         m3 = (max(0, p1-p2)/p1)

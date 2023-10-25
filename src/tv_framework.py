@@ -25,6 +25,7 @@ class ComparatorFramewok:
     def __init__(self,
                  epochs:int = 10,
                  batch_size:int = 16,
+                 optm_type: str = 'Adamax',
                  lr:float = 0.0001, #lr:float = 0.0001,
                  weight_decay:float = 0.1,
                  momentum:float = 0.9,
@@ -46,7 +47,7 @@ class ComparatorFramewok:
         self.model = model.to(self.device)
 
         # Training configuration
-        self.optimizer = self.__get_optimizer()
+        self.optimizer = self.__get_optimizer(optm_type=optm_type)
         self.criterion = self.__get_criterion()
         self.__train_step = None
         self.__validation_step = None
@@ -232,6 +233,9 @@ class ComparatorFramewok:
 
     def __get_optimizer(self, optm_type:str = 'Adamax'):
         match optm_type:
+            case 'Adam':
+                return optim.Adam(self.model.parameters(), lr=self.lr)
+
             case 'Adamax':
                 return optim.Adamax(self.model.parameters(), lr=self.lr)
 
@@ -321,7 +325,3 @@ class ComparatorFramewok:
         model.load_state_dict(torch.load(model_checkpoint.last_checkpoint))
         
         get_cam_metrics(model, output_folder_name, self.dataset_name, test_dataset_dir)
-
-if __name__ == "__main__":
-    
-    print(":)")

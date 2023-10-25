@@ -57,7 +57,8 @@ def compile_results(json_path_1, json_path_2) -> None:
         i += 1
 
 if __name__ == "__main__":
-    models_to_compare = ['RESNET_ABN_CF_GAP', 'RESNET_ABN']
+    #models_to_compare = ['RESNET_ABN_CF_GAP', 'RESNET_ABN']
+    models_to_compare = ['RESNET_ABN_CF_GAP', 'DENSENET_ABN_CF']
 
     folders = os.listdir(f"../output/{models_to_compare[0]}")
 

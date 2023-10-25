@@ -8,6 +8,7 @@ import cv2
 
 from PIL import Image
 from torchvision import transforms
+from torchvision.models import densenet201
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -114,9 +115,9 @@ class _Transition(nn.Sequential):
         self.conv = nn.Conv2d(num_input_features, num_output_features, kernel_size=1, stride=1, bias=False)
         self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
 
-class DenseNet201ABENN(nn.Module):
+class DenseNet201ABNGAP(nn.Module):
     def __init__(self, baseline_model, n_classes:int = 2, freeze_training:bool = False, *args, **kwargs) -> None:
-        super(DenseNet201ABENN, self).__init__()
+        super(DenseNet201ABNGAP, self).__init__()
 
         if freeze_training:
             print("DenseNet201ABNN - Training freezed")
@@ -167,16 +168,10 @@ class DenseNet201ABENN(nn.Module):
         )
         
         self.last_conv_block = baseline_model.features.denseblock4
-        self.last_bn = baseline_model.features.norm5
+        self.las_bn = baseline_model.features.norm5
+        self.gap_conv = nn.Conv2d(1920, n_classes, 1)
 
-        self.classifier = nn.Sequential(
-            OrderedDict(
-                [
-                    ("flatten", nn.Flatten()),
-                    ("fc", nn.Linear(1920, n_classes, bias=True))
-                ]
-            )
-        )
+        self.classifier = nn.AvgPool2d(7)
 
         self.gradients = None
 
@@ -207,7 +202,7 @@ class DenseNet201ABENN(nn.Module):
         rx = rx + x
 
         rx = self.last_conv_block(rx)
-        rx = self.last_bn(rx)
+        rx = self.las_bn(rx)
 
         # Para o grad-cam
         rx = F.relu(rx, inplace=True)
@@ -215,9 +210,11 @@ class DenseNet201ABENN(nn.Module):
         if rx.requires_grad:
             rx.register_hook(self.gradients_hook)
 
-        rx = F.adaptive_avg_pool2d(rx, (1,1))
+        rx = self.gap_conv(rx)
 
         rx = self.classifier(rx)
+        rx = rx[:,:,0,0]
 
         return rx
+
     

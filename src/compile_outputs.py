@@ -4,16 +4,16 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
 
+
 def clear_terminal() -> None:
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def generate_training_results_graphs(model:str) -> None:
 
-    def generate_graphs(output_path:str) -> None:
-        
+def generate_training_results_graphs(model: str) -> None:
+    def generate_graphs(output_path: str) -> None:
+
         with open(os.path.join(output_path, "training_results.json"), "r") as f:
             metrics = json.load(f)
-
 
             n_epochs = len(metrics.keys())
             epochs_k = list(metrics.keys())
@@ -27,22 +27,22 @@ def generate_training_results_graphs(model:str) -> None:
                     np_metrics[i][j] = metrics[epochs_k[j]][metrics_k[i]]
 
             for metric in range(metrics_per_epoch):
-                v = np_metrics[metric][:]*100
-                
+                v = np_metrics[metric][:] * 100
+
                 plt.gca().set_ylim(top=105)
                 plt.gca().yaxis.set_major_formatter(mtick.PercentFormatter())
                 plt.xlabel("Epochs")
-                plt.xticks(range(1, n_epochs+1))
+                plt.xticks(range(1, n_epochs + 1))
                 plt.ylabel(f"{metrics_k[metric].capitalize()} (%)")
                 plt.plot(range(n_epochs), v)
 
                 s_y = v[np.argmax(v)]
                 s_x = np.argmax(v)
                 plt.scatter(s_x, s_y)
-                plt.annotate(f"{v[np.argmax(v)]:.2f}%", 
-                             (s_x+0.2, s_y-5 if s_y > 5 else s_y+5), 
+                plt.annotate(f"{v[np.argmax(v)]:.2f}%",
+                             (s_x + 0.2, s_y - 5 if s_y > 5 else s_y + 5),
                              weight="bold",
-                             ha='center', 
+                             ha='center',
                              color=plt.gca().lines[-1].get_color())
 
                 try:
@@ -57,16 +57,15 @@ def generate_training_results_graphs(model:str) -> None:
             plt.gca().set_ylim(top=105)
             plt.gca().yaxis.set_major_formatter(mtick.PercentFormatter())
             plt.xlabel("Epochs")
-            plt.xticks(range(1, n_epochs+1))
+            plt.xticks(range(1, n_epochs + 1))
 
             last_x = -1
             last_y = -1
             p_increment = 0
             n_increment = 0
 
-            #plt.figure(figsize=(6.4, 5.5))
             for metric in range(metrics_per_epoch):
-                v = np_metrics[metric][:]*100    
+                v = np_metrics[metric][:] * 100
                 plt.plot(v, label=metrics_k[metric].capitalize())
 
                 s_y = v[np.argmax(v)]
@@ -74,18 +73,18 @@ def generate_training_results_graphs(model:str) -> None:
 
                 last_x = s_x if last_x == -1 else last_x
 
-                text_y = s_y-4.5 if s_y > 4.5 else s_y+4.5
-                text_x = s_x+0.4
+                text_y = s_y - 4.5 if s_y > 4.5 else s_y + 4.5
+                text_x = s_x + 0.4
 
                 if s_y == last_y or s_x == last_x:
                     last_x = s_x
                     last_y = s_y
 
                     if s_y > 5:
-                        text_y = text_y-n_increment
+                        text_y = text_y - n_increment
                         n_increment += 5
                     else:
-                        text_y = text_y+p_increment
+                        text_y = text_y + p_increment
                         p_increment += 5
 
                 elif metric == 0:
@@ -93,13 +92,12 @@ def generate_training_results_graphs(model:str) -> None:
                     last_y = s_y
 
                 plt.scatter(s_x, s_y, color=plt.gca().lines[-1].get_color())
-                plt.annotate(f"{v[np.argmax(v)]:.2f}%", 
-                             (text_x, text_y), 
+                plt.annotate(f"{v[np.argmax(v)]:.2f}%",
+                             (text_x, text_y),
                              weight="bold",
-                             ha='center', 
+                             ha='center',
                              color=plt.gca().lines[-1].get_color())
-                    
-            
+
             plt.legend(loc='upper center',
                        bbox_to_anchor=(0.5, -0.15),
                        fancybox=True,
@@ -122,21 +120,18 @@ def generate_training_results_graphs(model:str) -> None:
         if dt_i_i < 0 or dt_i_i > len(datasets):
             print("Invalid Index")
             input("Press ENTER to continue...")
-        
+
         else:
             clear_terminal()
             generate_graphs(f"../output/{model}/{datasets[dt_i_i]}")
             print(f"Finished!\nOutputs in: ../output/{model}/{datasets[dt_i_i]}/graphs")
-            
+
             # TODO - Perguntar se o usuário deseja retornar ao menu ou não
             input("Press ENTER to return to menu...")
             break
 
 
-
-
-def select_op(models:list[str]) -> None:
-
+def select_op(models: list[str]) -> None:
     while True:
         clear_terminal()
         print(f"Models: {models}\n")
@@ -144,8 +139,8 @@ def select_op(models:list[str]) -> None:
         for m in models:
             print(f"Choose what to do with the {m} outputs:")
             print("[1] - Generate training results graphs")
-            print("[2] - Compare CAM metrics with the second model")
-            print("[3] - Compile CAM metris from this model")
+            print("[2] - Compare CAM metrics with the second models")
+            print("[3] - Compile CAM metris from this models")
 
             op = int(input(">>> "))
 
@@ -158,10 +153,10 @@ def select_op(models:list[str]) -> None:
                     pass
 
 
-def select_model_data(n_models:int = 1) -> list[str]:
+def select_model_data(n_models: int = 1) -> list[str]:
     try:
 
-        assert n_models >= 1 and n_models <= 2
+        assert 1 <= n_models <= 2
 
         r = []
 
@@ -169,7 +164,7 @@ def select_model_data(n_models:int = 1) -> list[str]:
 
         for i in range(n_models):
             clear_terminal()
-            print(f"Select the {i+1}° model")
+            print(f"Select the {i + 1}° models")
 
             for m_i in range(len(models)):
                 print(f"{m_i} - {models[m_i]}")
@@ -177,7 +172,7 @@ def select_model_data(n_models:int = 1) -> list[str]:
             # Kinda gross, but it will work for now
             m_i_i = int(input(">>> "))
             while m_i_i < 0 or m_i_i > len(models):
-                print("\nERROR - Invalid model!")
+                print("\nERROR - Invalid models!")
                 m_i_i = int(input(">>> "))
 
             r.append(models[m_i_i])
@@ -186,18 +181,18 @@ def select_model_data(n_models:int = 1) -> list[str]:
 
     except OSError as _:
         print("Compile Outputs - Output folder does not exist")
-    
+
     except AssertionError as error:
         print(f"Compile Outputs - {error}")
 
-def main_menu() -> None:
 
+def main_menu() -> None:
     select_op(select_model_data(1))
 
     pass
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     main_menu()
 
     pass

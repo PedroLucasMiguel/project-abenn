@@ -1,19 +1,15 @@
 from collections import OrderedDict
-from typing import Any, List, Tuple
+from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import cv2
 
-from PIL import Image
-from torchvision import transforms
-import matplotlib.pyplot as plt
-import numpy as np
 
 class _DenseLayer(nn.Module):
     def __init__(
-        self, num_input_features: int, growth_rate: int, bn_size: int, drop_rate: float, memory_efficient: bool = False
+            self, num_input_features: int, growth_rate: int, bn_size: int, drop_rate: float,
+            memory_efficient: bool = False
     ) -> None:
         super().__init__()
         self.norm1 = nn.BatchNorm2d(num_input_features)
@@ -75,17 +71,18 @@ class _DenseLayer(nn.Module):
             new_features = F.dropout(new_features, p=self.drop_rate, training=self.training)
         return new_features
 
+
 class _DenseBlock(nn.ModuleDict):
     _version = 2
 
     def __init__(
-        self,
-        num_layers: int,
-        num_input_features: int,
-        bn_size: int,
-        growth_rate: int,
-        drop_rate: float,
-        memory_efficient: bool = False,
+            self,
+            num_layers: int,
+            num_input_features: int,
+            bn_size: int,
+            growth_rate: int,
+            drop_rate: float,
+            memory_efficient: bool = False,
     ) -> None:
         super().__init__()
         for i in range(num_layers):
@@ -114,8 +111,9 @@ class _Transition(nn.Sequential):
         self.conv = nn.Conv2d(num_input_features, num_output_features, kernel_size=1, stride=1, bias=False)
         self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
 
+
 class DenseNet201ABENN(nn.Module):
-    def __init__(self, baseline_model, n_classes:int = 2, freeze_training:bool = False, *args, **kwargs) -> None:
+    def __init__(self, baseline_model, n_classes: int = 2, freeze_training: bool = False, *args, **kwargs) -> None:
         super(DenseNet201ABENN, self).__init__()
 
         if freeze_training:
@@ -129,7 +127,7 @@ class DenseNet201ABENN(nn.Module):
 
         self.feature_extractor = nn.Sequential(
             OrderedDict(
-                [   
+                [
                     ("first_conv", nn.Sequential(
                         baseline_model.features.conv0,
                         baseline_model.features.norm0,
@@ -165,7 +163,7 @@ class DenseNet201ABENN(nn.Module):
                 ]
             )
         )
-        
+
         self.last_conv_block = baseline_model.features.denseblock4
         self.last_bn = baseline_model.features.norm5
 
@@ -185,7 +183,7 @@ class DenseNet201ABENN(nn.Module):
 
     def get_activations_gradient(self):
         return self.gradients
-    
+
     def get_activations(self, x):
         x = self.feature_extractor(x)
         self.att = self.attention_branch(x)
@@ -197,7 +195,7 @@ class DenseNet201ABENN(nn.Module):
 
         return rx
 
-    def forward(self, x:Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
 
         x = self.feature_extractor(x)
 
@@ -215,9 +213,8 @@ class DenseNet201ABENN(nn.Module):
         if rx.requires_grad:
             rx.register_hook(self.gradients_hook)
 
-        rx = F.adaptive_avg_pool2d(rx, (1,1))
+        rx = F.adaptive_avg_pool2d(rx, (1, 1))
 
         rx = self.classifier(rx)
 
         return rx
-    

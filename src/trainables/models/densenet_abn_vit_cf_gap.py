@@ -1,16 +1,10 @@
 from collections import OrderedDict
-from typing import Any, List, Tuple
+from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import cv2
 
-from PIL import Image
-from torchvision import transforms
-from torchvision.models import densenet201
-import matplotlib.pyplot as plt
-import numpy as np
 
 class _DenseLayer(nn.Module):
     def __init__(
@@ -115,9 +109,9 @@ class _Transition(nn.Sequential):
         self.conv = nn.Conv2d(num_input_features, num_output_features, kernel_size=1, stride=1, bias=False)
         self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
 
-class DenseNet201ABNGAP(nn.Module):
+class DenseNet201ABNVITGAP(nn.Module):
     def __init__(self, baseline_model, n_classes:int = 2, freeze_training:bool = False, *args, **kwargs) -> None:
-        super(DenseNet201ABNGAP, self).__init__()
+        super(DenseNet201ABNVITGAP, self).__init__()
 
         if freeze_training:
             print("DenseNet201ABNN - Training freezed")
@@ -150,22 +144,7 @@ class DenseNet201ABNGAP(nn.Module):
             )
         )
 
-        self.attention_branch = nn.Sequential(
-            OrderedDict(
-                [
-                    ("map_creator", nn.Sequential(
-                        _DenseBlock(32, 896, 4, 32, 0, False),
-                        nn.BatchNorm2d(1920),
-                        nn.Conv2d(1920, n_classes, kernel_size=1, padding=0, bias=False),
-                        nn.BatchNorm2d(n_classes),
-                        nn.ReLU(),
-                        nn.Conv2d(n_classes, 1, kernel_size=3, padding=1, bias=False),
-                        nn.BatchNorm2d(1),
-                        nn.Sigmoid()
-                    ))
-                ]
-            )
-        )
+        self.attention_branch = nn.MultiheadAttention(49, 7)
         
         self.last_conv_block = baseline_model.features.denseblock4
         self.las_bn = baseline_model.features.norm5
@@ -192,11 +171,14 @@ class DenseNet201ABNGAP(nn.Module):
 
         return rx
 
-    def forward(self, x:Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
 
         x = self.feature_extractor(x)
-
-        self.att = self.attention_branch(x)
+        print(x.shape)
+        x_flattened = x.flatten(2,3)
+        print(x_flattened.shape)
+        self.att = self.attention_branch(query=x_flattened, key=x_flattened, value=x_flattened)
+        print(self.att[0].shape)
 
         rx = x * self.att
         rx = rx + x

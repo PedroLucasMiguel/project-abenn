@@ -74,10 +74,10 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
     cv2.imwrite("teste.png", img)
 
     '''
-    gradients = model.get_activations_gradient()
+    gradients = models.get_activations_gradient()
 
     gradients = torch.mean(gradients, dim=[0, 2, 3])
-    layer_output = model.get_activations(input_batch)
+    layer_output = models.get_activations(input_batch)
 
     for i in range(len(gradients)):
         layer_output[:, i, :, :] *= gradients[i]
@@ -85,7 +85,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
     layer_output = layer_output[0, : , : , :]
     
 
-    heatmap = model.att.detach().numpy()
+    heatmap = models.att.detach().numpy()
 
     # Salvando imagens
     img = cv2.imread(img_name)
@@ -109,7 +109,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 EPOCHS = 10
 
 def train_resnet50_abn_cf(dn:str, use_gpu_n:int = 0) -> None:
-    n_classes = len(os.listdir(f"../datasets/{dn}"))
+    n_classes = len(os.listdir(f"../../datasets/{dn}"))
     model = resnet50_cf(True)
     model.fc = nn.Linear(512 * model.block.expansion, n_classes)
 

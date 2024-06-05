@@ -12,8 +12,10 @@ samples
 pcam_dataset
 .hypothesis
 notes.txt
-src/model/checkpoints
+src/trainables/models/checkpoints
 *.jpg
 *.png
 *.zip
 *.tif
+
+.idea/*

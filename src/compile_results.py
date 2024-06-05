@@ -2,8 +2,8 @@ import os
 import json
 import numpy as np
 
-def compile_results(json_path_1, json_path_2) -> None:
 
+def compile_results(json_path_1, json_path_2) -> None:
     f = open(json_path_1, "r")
     js1 = json.load(f)
     f.close()
@@ -18,11 +18,10 @@ def compile_results(json_path_1, json_path_2) -> None:
     results = np.zeros(shape=(n_metrics, 2))
     sumns = np.zeros(shape=(n_metrics, 2), dtype=np.float64)
 
-
     for k in js1.keys():
         j = 0
         for m in js1[k].keys():
-            
+
             sumns[j][0] += js1[k][m]
             sumns[j][1] += js2[k][m]
 
@@ -51,10 +50,12 @@ def compile_results(json_path_1, json_path_2) -> None:
     i = 0
 
     for r in results:
-        print(f"{m_labels[i]} in the {'FIRST' if r[0] > r[1] else 'SECOND'} model is better in {abs((((r[0]/n_samples) - (r[1]/n_samples))*100)):2f}% more cases")
-        print(f"{m_labels[i]} is {sumns[i][0]/n_samples} | {sumns[i][1]/n_samples}\n")
+        print(
+            f"{m_labels[i]} in the {'FIRST' if r[0] > r[1] else 'SECOND'} model is better in {abs((((r[0] / n_samples) - (r[1] / n_samples)) * 100)):2f}% more cases")
+        print(f"{m_labels[i]} is {sumns[i][0] / n_samples} | {sumns[i][1] / n_samples}\n")
 
         i += 1
+
 
 if __name__ == "__main__":
     #models_to_compare = ['RESNET_ABN_CF_GAP', 'RESNET_ABN']
@@ -63,10 +64,9 @@ if __name__ == "__main__":
     folders = os.listdir(f"../output/{models_to_compare[0]}")
 
     for f in folders:
-        print(f"{'='*80}\n")
+        print(f"{'=' * 80}\n")
         print(f"\tResults from folder: {f}\n")
 
-        compile_results(f"../output/{models_to_compare[0]}/{f}/cam_metrics.json", 
+        compile_results(f"../output/{models_to_compare[0]}/{f}/cam_metrics.json",
                         f"../output/{models_to_compare[1]}/{f}/cam_metrics.json")
-        print(f"\n{'='*80}")
-    
+        print(f"\n{'=' * 80}")

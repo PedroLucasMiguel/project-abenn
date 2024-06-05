@@ -1,6 +1,4 @@
-import torch
 import torch.nn as nn
-import math
 import torch.utils.model_zoo as model_zoo
 
 
@@ -94,13 +92,13 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ResNetCfGap(nn.Module):
+class ResNetCf(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000):
         self.block = block
         self.gradients = None
         self.inplanes = 64
-        super(ResNetCfGap, self).__init__()
+        super(ResNetCf, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -123,11 +121,8 @@ class ResNetCfGap(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, down_size=True)
-        self.layer4[2] = nn.Sequential(*list(self.layer4[2].children())[0:4])
-        self.layer4[2].append(nn.Conv2d(512, num_classes, 1))
-        self.gap = nn.AvgPool2d(7)
-        #self.avgpool = nn.AvgPool2d(7, stride=1)
-        #self.fc = nn.Linear(512 * block.expansion, 1000)
+        self.avgpool = nn.AvgPool2d(7, stride=1)
+        self.fc = nn.Linear(512 * block.expansion, 1000)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -219,66 +214,64 @@ class ResNetCfGap(nn.Module):
         if rx.requires_grad:
             h = rx.register_hook(self.gradients_hook)
 
-        rx = self.gap(rx)
-        rx = rx[:,:,0,0]
-        #rx = self.avgpool(rx)
+        rx = self.avgpool(rx)
 
-        #rx = rx.view(rx.size(0), -1)
-        #rx = self.fc(rx)
+        rx = rx.view(rx.size(0), -1)
+        rx = self.fc(rx)
 
         return rx
 
 
 def resnet18_cf(pretrained=False, **kwargs):
-    """Constructs a ResNet-18 model.
+    """Constructs a ResNet-18 models.
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a models pre-trained on ImageNet
     """
-    model = ResNetCfGap(BasicBlock, [2, 2, 2, 2], **kwargs)
+    model = ResNetCf(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
     return model
 
 
 def resnet34_cf(pretrained=False, **kwargs):
-    """Constructs a ResNet-34 model.
+    """Constructs a ResNet-34 models.
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a models pre-trained on ImageNet
     """
-    model = ResNetCfGap(BasicBlock, [3, 4, 6, 3], **kwargs)
+    model = ResNetCf(BasicBlock, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
     return model
 
 
-def resnet50_cf_gap(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
+def resnet50_cf(pretrained=False, **kwargs):
+    """Constructs a ResNet-50 models.
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a models pre-trained on ImageNet
     """
-    model = ResNetCfGap(Bottleneck, [3, 4, 6, 3], **kwargs)
+    model = ResNetCf(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), strict=False)
     return model
 
 
 def resnet101_cf(pretrained=False, **kwargs):
-    """Constructs a ResNet-101 model.
+    """Constructs a ResNet-101 models.
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a models pre-trained on ImageNet
     """
-    model = ResNetCfGap(Bottleneck, [3, 4, 23, 3], **kwargs)
+    model = ResNetCf(Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
     return model
 
 
 def resnet152_cf(pretrained=False, **kwargs):
-    """Constructs a ResNet-152 model.
+    """Constructs a ResNet-152 models.
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a models pre-trained on ImageNet
     """
-    model = ResNetCfGap(Bottleneck, [3, 8, 36, 3], **kwargs)
+    model = ResNetCf(Bottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
     return model

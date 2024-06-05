@@ -1,22 +1,20 @@
 import json
 import os
 import torch
-import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 import warnings
 import cv2
 from PIL import Image
 from torchvision import transforms
-from model.densenet import DenseNet201ABENN
-from matplotlib import pyplot as plt
 from sklearn.preprocessing import Normalizer
-warnings.filterwarnings("ignore", category=UserWarning) 
+
+warnings.filterwarnings("ignore", category=UserWarning)
+
 
 # SAUCE: https://openaccess.thecvf.com/content/CVPR2021W/RCV/papers/Poppi_Revisiting_the_Evaluation_of_Class_Activation_Mapping_for_Explainability_A_CVPRW_2021_paper.pdf
 
-def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
-
+def get_grad_cam(model, class_to_backprop: int = 0, img_name=None, img=None):
     device = "cpu"
 
     if img is None:
@@ -27,7 +25,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 
     # Transformações da imagem de entrada
     preprocess = transforms.Compose([
-        transforms.Resize((224,224)),
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
@@ -56,7 +54,6 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 
     # Obtendo informações dos gradienttes e construindo o "heatmap"
 
-
     gradients = model.get_activations_gradient()
     gradients = torch.mean(gradients, dim=[0, 2, 3])
     layer_output = model.get_activations(input_batch)
@@ -64,7 +61,7 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
     for i in range(len(gradients)):
         layer_output[:, i, :, :] *= gradients[i]
 
-    layer_output = layer_output[0, : , : , :]
+    layer_output = layer_output[0, :, :, :]
 
     # Salvando imagens
     img = cv2.imread(img_name)
@@ -83,8 +80,8 @@ def get_grad_cam(model, class_to_backprop:int = 0, img_name = None, img = None):
 
     return heatmap, img, prob1
 
-def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
 
+def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
     metrics_json = {}
     output_folder = f"../output/{identifier}/{dataset_name}"
 
@@ -107,8 +104,8 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
         numerator_1 = np.std(h2)
         numerator_2 = np.std(h1)
 
-        matrix = denominator/numerator_1*numerator_2
-        normalized_matrix = (matrix-np.min(matrix))/(np.max(matrix)-np.min(matrix))
+        matrix = denominator / numerator_1 * numerator_2
+        normalized_matrix = (matrix - np.min(matrix)) / (np.max(matrix) - np.min(matrix))
 
         m1 = np.mean(normalized_matrix)
 
@@ -120,13 +117,15 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
         #print(m2)
 
         #m3 = (max(0, p1-p2)/p1)*100
-        m3 = (max(0, p1-p2)/p1)
+        m3 = (max(0, p1 - p2) / p1)
 
-        adcc = 3*((1/m1) + (1/1-m2) + (1/1-m3))**-1
+        adcc = 3 * ((1 / m1) + (1 / 1 - m2) + (1 / 1 - m3)) ** -1
 
-        print("Coherency (HB): {} | Complexity (LB): {} | Average Drop (LB): {} | ADCC (HB): {}".format(m1,m2,m3,adcc))
+        print(
+            "Coherency (HB): {} | Complexity (LB): {} | Average Drop (LB): {} | ADCC (HB): {}".format(m1, m2, m3, adcc))
         img_name = img.split('/')[-1]
-        metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3), "adcc": float(adcc)}
+        metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3),
+                                  "adcc": float(adcc)}
 
         cv2.imwrite(f"{output_folder}/cams/i1_{img_name}.png", i1)
         cv2.imwrite(f"{output_folder}/cams/i2_{img_name}.png", i2)

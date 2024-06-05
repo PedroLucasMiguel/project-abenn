@@ -115,7 +115,7 @@ class _Transition(nn.Sequential):
 
 
 class DenseNet(nn.Module):
-    r"""Densenet-BC model class, based on
+    r"""Densenet-BC models class, based on
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_.
 
     Args:
@@ -143,7 +143,7 @@ class DenseNet(nn.Module):
 
         super().__init__()
 
-        # Enconder-decoder model
+        # Enconder-decoder models
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 128, 3, padding=1, stride=1),
             nn.ReLU(),

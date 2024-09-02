@@ -22,10 +22,10 @@ class ResNet50ABN(TrainerFramework):
                          use_augmentation=False)
 
     def train_step(self, engine, batch):
-        self.model.train()
+        self.trainable_model.train()
         self.optimizer.zero_grad()
         x, y = batch[0].to(self.device), batch[1].to(self.device)
-        att_outputs, outputs, _ = self.model(x)
+        att_outputs, outputs, _ = self.trainable_model(x)
 
         att_loss = self.criterion(att_outputs, y)
         per_loss = self.criterion(outputs, y)
@@ -36,11 +36,11 @@ class ResNet50ABN(TrainerFramework):
 
         return loss.item()
 
-    def validation_step(self, engine, batch):
-        self.model.eval()
+    def val_step(self, engine, batch):
+        self.trainable_model.eval()
         with self.no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
-            _, y_pred, _ = self.model(x)
+            _, y_pred, _ = self.trainable_model(x)
             return y_pred, y
 
 
@@ -59,12 +59,12 @@ class ResNet50ABNCFGAP(TrainerFramework):
                          use_augmentation=False)
 
     def train_step(self, engine, batch):
-        self.model.train()
+        self.trainable_model.train()
         self.optimizer.zero_grad()
         x, y = batch[0].to(self.device), batch[1].to(self.device)
-        y_pred = self.model(x)
+        y_pred = self.trainable_model(x)
         loss = self.criterion(y_pred, y)
-        att = np.asarray(self.model.att.detach())
+        att = np.asarray(self.trainable_model.att.detach())
 
         cam_normalized = np.zeros((att.shape[0], att.shape[2], att.shape[3]))
 
@@ -86,23 +86,23 @@ class ResNet50ABNCFGAP(TrainerFramework):
         return loss.item()
 
     def val_step(self, engine, batch):
-        self.model.eval()
+        self.trainable_model.eval()
         with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
-            y_pred = self.model(x)
+            y_pred = self.trainable_model(x)
             return y_pred, y
         
 class ResNet50ABNCF(TrainerFramework):
     def __init__(self, dataset_name: str) -> None:
         self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
-        self.model = resnet50(True, num_classes=self.n_classes)
-        self.model.fc = nn.Linear(512 * self.model.block.expansion, self.n_classes)
+        self.trainable_model = resnet50(True, num_classes=self.n_classes)
+        self.trainable_model.fc = nn.Linear(512 * self.trainable_model.block.expansion, self.n_classes)
 
     def train_step(self, engine, batch):
-        self.model.train()
+        self.trainable_model.train()
         self.optimizer.zero_grad()
         x, y = batch[0].to(self.device), batch[1].to(self.device)
-        att_outputs, outputs, _ = self.model(x)
+        att_outputs, outputs, _ = self.trainable_model(x)
 
         att_loss = self.criterion(att_outputs, y)
         per_loss = self.criterion(outputs, y)
@@ -113,9 +113,9 @@ class ResNet50ABNCF(TrainerFramework):
 
         return loss.item()
 
-    def validation_step(self, engine, batch):
-        self.model.eval()
+    def val_step(self, engine, batch):
+        self.trainable_model.eval()
         with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
-            _, y_pred, _ = self.model(x)
+            _, y_pred, _ = self.trainable_model(x)
             return y_pred, y

@@ -13,7 +13,8 @@ if __name__ == '__main__':
                     'RESNET50_ABN']
 
     # Datasets
-    dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
+    #dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
+    dts1 = ['CR']
 
     parser = argparse.ArgumentParser(prog='Comparator Framework',
                                      description='This Program enable to compare the explanation os two models.')
@@ -48,3 +49,6 @@ if __name__ == '__main__':
             case 'DENSENET201_ABN_CF_GAP':
                 trainable = DenseNet201ABNCFGAP(dataset_name=dn)
                 trainable.procedure('DENSENET201_ABN_CF_GAP')
+            case 'DENSENET201_ABN_VIT_CF_GAP':
+                trainable = TrainableDenseNet201ABNVITCFGAP(dataset_name=dn)
+                trainable.procedure('DENSENET201_ABN_VIT_CF_GAP')

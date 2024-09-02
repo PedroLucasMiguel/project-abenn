@@ -21,26 +21,26 @@ class ResNet50ABN(TrainerFramework):
                          dataset_name=dataset_name,
                          use_augmentation=False)
 
-    def train_step(engine, batch):
-        cpf.model.train()
-        cpf.optimizer.zero_grad()
-        x, y = batch[0].to(cpf.device), batch[1].to(cpf.device)
-        att_outputs, outputs, _ = cpf.model(x)
+    def train_step(self, engine, batch):
+        self.model.train()
+        self.optimizer.zero_grad()
+        x, y = batch[0].to(self.device), batch[1].to(self.device)
+        att_outputs, outputs, _ = self.model(x)
 
-        att_loss = cpf.criterion(att_outputs, y)
-        per_loss = cpf.criterion(outputs, y)
+        att_loss = self.criterion(att_outputs, y)
+        per_loss = self.criterion(outputs, y)
         loss = att_loss + per_loss
 
         loss.backward()
-        cpf.optimizer.step()
+        self.optimizer.step()
 
         return loss.item()
 
-    def validation_step(engine, batch):
-        cpf.model.eval()
-        with torch.no_grad():
-            x, y = batch[0].to(cpf.device), batch[1].to(cpf.device)
-            _, y_pred, _ = cpf.model(x)
+    def validation_step(self, engine, batch):
+        self.model.eval()
+        with self.no_grad():
+            x, y = batch[0].to(self.device), batch[1].to(self.device)
+            _, y_pred, _ = self.model(x)
             return y_pred, y
 
 
@@ -90,4 +90,32 @@ class ResNet50ABNCFGAP(TrainerFramework):
         with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
             y_pred = self.model(x)
+            return y_pred, y
+        
+class ResNet50ABNCF(TrainerFramework):
+    def __init__(self, dataset_name: str) -> None:
+        self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
+        self.model = resnet50(True, num_classes=self.n_classes)
+        self.model.fc = nn.Linear(512 * self.model.block.expansion, self.n_classes)
+
+    def train_step(self, engine, batch):
+        self.model.train()
+        self.optimizer.zero_grad()
+        x, y = batch[0].to(self.device), batch[1].to(self.device)
+        att_outputs, outputs, _ = self.model(x)
+
+        att_loss = self.criterion(att_outputs, y)
+        per_loss = self.criterion(outputs, y)
+        loss = att_loss + per_loss
+
+        loss.backward()
+        self.optimizer.step()
+
+        return loss.item()
+
+    def validation_step(self, engine, batch):
+        self.model.eval()
+        with no_grad():
+            x, y = batch[0].to(self.device), batch[1].to(self.device)
+            _, y_pred, _ = self.model(x)
             return y_pred, y

@@ -160,7 +160,7 @@ def select_model_data(n_models: int = 1) -> list[str]:
 
         r = []
 
-        models = os.listdir("../output/")
+        models = os.listdir("output/")
 
         for i in range(n_models):
             clear_terminal()

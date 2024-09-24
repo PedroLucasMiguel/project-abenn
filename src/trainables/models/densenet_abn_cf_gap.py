@@ -191,8 +191,7 @@ class DenseNet201ABNGAP(nn.Module):
         x = self.feature_extractor(x)
 
         self.att = self.attention_branch(x)
-        print(self.att.shape)
-
+        
         rx = x * self.att
         rx = rx + x
 

@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+from matplotlib import pyplot as plt
+
 
 class _DenseLayer(nn.Module):
     def __init__(
@@ -13,11 +15,13 @@ class _DenseLayer(nn.Module):
         super().__init__()
         self.norm1 = nn.BatchNorm2d(num_input_features)
         self.relu1 = nn.ReLU(inplace=True)
-        self.conv1 = nn.Conv2d(num_input_features, bn_size * growth_rate, kernel_size=1, stride=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            num_input_features, bn_size * growth_rate, kernel_size=1, stride=1, bias=False)
 
         self.norm2 = nn.BatchNorm2d(bn_size * growth_rate)
         self.relu2 = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(bn_size * growth_rate, growth_rate, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(bn_size * growth_rate, growth_rate,
+                               kernel_size=3, stride=1, padding=1, bias=False)
 
         self.drop_rate = float(drop_rate)
         self.memory_efficient = memory_efficient
@@ -60,8 +64,10 @@ class _DenseLayer(nn.Module):
 
         new_features = self.conv2(self.relu2(self.norm2(bottleneck_output)))
         if self.drop_rate > 0:
-            new_features = F.dropout(new_features, p=self.drop_rate, training=self.training)
+            new_features = F.dropout(
+                new_features, p=self.drop_rate, training=self.training)
         return new_features
+
 
 class _DenseBlock(nn.ModuleDict):
     _version = 2
@@ -99,11 +105,45 @@ class _Transition(nn.Sequential):
         super().__init__()
         self.norm = nn.BatchNorm2d(num_input_features)
         self.relu = nn.ReLU(inplace=True)
-        self.conv = nn.Conv2d(num_input_features, num_output_features, kernel_size=1, stride=1, bias=False)
+        self.conv = nn.Conv2d(
+            num_input_features, num_output_features, kernel_size=1, stride=1, bias=False)
         self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
 
+class Attention(nn.Module):
+    # taken from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py
+    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
+        super().__init__()
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = qk_scale or head_dim ** -0.5
+
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        self.attn_drop_activation = None
+
+    def forward(self, x):
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]
+        
+        q = q * self.scale
+
+        attn = (q @ k.transpose(-2, -1))
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        self.attn_drop_activation = attn.detach() # "Forward hook"
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
+
 class DenseNet201ABNVITGAP(nn.Module):
-    def __init__(self, baseline_model, n_classes:int = 2, freeze_training:bool = False, *args, **kwargs) -> None:
+    def __init__(self, baseline_model, n_classes: int = 2, freeze_training: bool = False, *args, **kwargs) -> None:
         super(DenseNet201ABNVITGAP, self).__init__()
 
         if freeze_training:
@@ -117,7 +157,7 @@ class DenseNet201ABNVITGAP(nn.Module):
 
         self.feature_extractor = nn.Sequential(
             OrderedDict(
-                [   
+                [
                     ("first_conv", nn.Sequential(
                         baseline_model.features.conv0,
                         baseline_model.features.norm0,
@@ -137,8 +177,24 @@ class DenseNet201ABNVITGAP(nn.Module):
             )
         )
 
-        self.attention_branch = nn.MultiheadAttention(49, 7)
-        
+        self.attention_branch = nn.Sequential(
+            OrderedDict(
+                [
+                    ("map_creator", nn.Sequential(
+                        _DenseBlock(32, 896, 4, 32, 0, False),
+                        nn.BatchNorm2d(1920),
+                        nn.Conv2d(1920, n_classes, kernel_size=1, padding=0, bias=False),
+                        nn.BatchNorm2d(n_classes),
+                        nn.ReLU(),
+                        nn.Conv2d(n_classes, 1, kernel_size=3, padding=1, bias=False),
+                        nn.BatchNorm2d(1),
+                        nn.Sigmoid()
+                    ))
+                ]
+            )
+        )
+        self.attention_branch2 = Attention(896, 7)
+
         self.last_conv_block = baseline_model.features.denseblock4
         self.las_bn = baseline_model.features.norm5
         self.gap_conv = nn.Conv2d(1920, n_classes, 1)
@@ -152,7 +208,7 @@ class DenseNet201ABNVITGAP(nn.Module):
 
     def get_activations_gradient(self):
         return self.gradients
-    
+
     def get_activations(self, x):
         x = self.feature_extractor(x)
         self.att = self.attention_branch(x)
@@ -165,14 +221,41 @@ class DenseNet201ABNVITGAP(nn.Module):
         return rx
 
     def forward(self, x: Tensor) -> Tensor:
-
         x = self.feature_extractor(x)
-        print(x.shape)
-        x_flattened = x.flatten(2,3)
-        print(x_flattened.shape)
-        self.att = self.attention_branch(query=x_flattened, key=x_flattened, value=x_flattened)
-        print(self.att[0].shape)
+        self.att = x.flatten(2) #16, 896, 49
+        self.att = self.att.reshape(self.att.shape[0], self.att.shape[2], self.att.shape[1])
+        self.att = self.attention_branch2(self.att)#16, 896, 49
+        self.att = self.attention_branch2.attn_drop_activation
 
+        result = torch.eye(self.att.shape[-1]) #49x49
+        attention_heads_fused = self.att.min(axis=1)[0] #16, 49
+
+        flat = attention_heads_fused.view(attention_heads_fused.size(0), -1)
+        _, indices = flat.topk(int(flat.size(-1)*0.9), -1, False)
+        indices = indices[indices != 0]
+        flat[0, indices] = 0
+
+        I = torch.eye(attention_heads_fused.size(-1))
+        a = (attention_heads_fused + 1.0*I)/2
+
+        final_result = torch.zeros(a.shape[0], a.shape[1], a.shape[2])
+        i = 0
+        for b in a:
+            final_result[i,:,:] = torch.matmul((b / b.sum(dim=-1)), result)
+            i+=1
+
+        self.att = final_result.mean(dim=1)
+        self.att = self.att.reshape(final_result.shape[0], 1, 7, 7)
+        # self.att = self.att.reshape(self.att.shape[0], 896, 7, 7)
+        # self.att = self.attention_branch(self.att)
+        #self.att = self.attention_branch(x)
+
+        '''
+            Notas para o Predo do futuro
+            o attention_heads_fused está saindo no formato [batch_size, imagem_flataned]
+            temos que pegar cada um desses batches e calcular o valor de attention rollout para eles
+            armazenando em um novo tensor de formato [batch_size, 1 (por ser uma imagem para cada elemento no batch), 7, 7]
+        '''
         rx = x * self.att
         rx = rx + x
 
@@ -188,8 +271,6 @@ class DenseNet201ABNVITGAP(nn.Module):
         rx = self.gap_conv(rx)
 
         rx = self.classifier(rx)
-        rx = rx[:,:,0,0]
+        rx = rx[:, :, 0, 0]
 
         return rx
-
-    

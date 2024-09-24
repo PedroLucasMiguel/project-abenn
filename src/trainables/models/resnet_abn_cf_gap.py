@@ -206,7 +206,6 @@ class ResNetCfGap(nn.Module):
         x = self.layer3(x)
 
         ax = self.bn_att(self.att_layer4(x))
-        print(ax.shape)
         ax = self.relu(self.bn_att2(self.att_conv(ax)))
 
         self.att = self.sigmoid(self.bn_att3(self.att_conv3(ax)))

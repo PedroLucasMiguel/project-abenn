@@ -142,9 +142,9 @@ class TrainableDenseNet201ABNVITCFGAP(TrainerFramework):
       s = np.sum(att[i, 0, :, :])
       cam_normalized[i, :, :] = np.divide(att[i, 0, :, :], s)
 
-    # Realizando a média dos batches
-    #m = np.mean(cam_normalized, axis=0)
-    #ce = CF*np.sum(m*np.log(m))
+    # # Realizando a média dos batches
+    # #m = np.mean(cam_normalized, axis=0)
+    # #ce = CF*np.sum(m*np.log(m))
 
     cam_normalized_log = np.log(cam_normalized)
     cam_sum = np.sum(np.multiply(cam_normalized, cam_normalized_log))

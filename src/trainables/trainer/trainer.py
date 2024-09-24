@@ -198,6 +198,8 @@ class TrainerFramework(ABC):
         match optm_type:
             case 'Adam':
                 return optim.Adam(self.model.parameters(), lr=self.lr)
+            case 'AdamW':
+                return optim.AdamW(self.model.parameters(), lr=self.lr)
             case 'Adamax':
                 return optim.Adamax(self.model.parameters(), lr=self.lr)
             case 'RMSprop':
@@ -276,7 +278,7 @@ class TrainerFramework(ABC):
 
         # Checkpoints configuration
         model_checkpoint = ModelCheckpoint(
-            dirname=os.path.join('output', output_folder_name, self.dataset_name),
+            dirname=os.path.join('..', 'output', output_folder_name, self.dataset_name),
             require_empty=False,
             n_saved=1,
             filename_prefix=f'train',
@@ -296,12 +298,12 @@ class TrainerFramework(ABC):
         print(f'\nTrain finished for models {model.__class__.__name__}')
 
         # Exporting metrics files
-        with open(os.path.join('output', output_folder_name, self.dataset_name, 'training_results.json'), 'w') as f:
+        with open(os.path.join('..', 'output', output_folder_name, self.dataset_name, 'training_results.json'), 'w') as f:
             json.dump(final_json, f)
 
         # Saving the training
         model.load_state_dict(load(model_checkpoint.last_checkpoint))
 
         # Calculating the CAM metrics
-        test_dataset_dir = os.path.join('../../..', 'datasets', self.dataset_name, 'test')
+        test_dataset_dir = os.path.join('..', 'datasets', self.dataset_name, 'test')
         get_cam_metrics(model, output_folder_name, self.dataset_name, test_dataset_dir)

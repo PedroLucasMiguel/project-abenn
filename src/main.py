@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     # Datasets
     #dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
-    dts1 = ['CR']
+    dts1 = ['LA']
 
     parser = argparse.ArgumentParser(prog='Comparator Framework',
                                      description='This Program enable to compare the explanation os two models.')

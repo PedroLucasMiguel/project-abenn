@@ -5,7 +5,7 @@ from torchvision.models import resnet50 as resnet50_baseline
 from .trainer.trainer import TrainerFramework
 from .models.resnet_abn_cf_gap import resnet50_cf_gap
 from .models.resnet_abn import resnet50
-from .models.resnet_baseline import ResNetGradCAM
+from .models.efficientnet_baseline import EfficientNetGradCAM
 from .global_config import *
 
 
@@ -97,7 +97,7 @@ class TrainableResNet50ABNCFGAP(TrainerFramework):
 class ResNet50Baseline(TrainerFramework):
     def __init__(self, dataset_name: str) -> None:
         self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
-        self.trainable_model = ResNetGradCAM(resnet50_baseline(weights='IMAGENET1K_V1'), n_classes=self.n_classes)
+        self.trainable_model = EfficientNetGradCAM(resnet50_baseline(weights='IMAGENET1K_V1'), n_classes=self.n_classes)
 
         super().__init__(epochs=EPOCHS,
                          batch_size=BATCH_SIZE,

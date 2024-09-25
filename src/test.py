@@ -1,5 +1,5 @@
-from torchvision.models import densenet201, resnet50
+from torchvision.models import densenet201, resnet50, efficientnet_b0
 
-model = densenet201(weights='IMAGENET1K_V1')
+model = efficientnet_b0(weights='IMAGENET1K_V1')
 
-print(model)
+print(model.features[8])

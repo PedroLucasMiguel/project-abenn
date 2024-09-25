@@ -234,7 +234,7 @@ class DenseNet201ABNVITGAP(nn.Module):
         self.att = self.attention_branch(self.att)#16, 896, 49
         self.att = self.attention_branch.attn_drop_activation
 
-        result = torch.eye(self.att.shape[-1]) #49x49
+        result = torch.eye(self.att.shape[-1]).to('cuda') #49x49
         attention_heads_fused = self.att.min(axis=1)[0] #16, 49
 
         flat = attention_heads_fused.view(attention_heads_fused.size(0), -1)

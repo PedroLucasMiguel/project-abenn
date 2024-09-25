@@ -177,23 +177,7 @@ class DenseNet201ABNVITGAP(nn.Module):
             )
         )
 
-        self.attention_branch = nn.Sequential(
-            OrderedDict(
-                [
-                    ("map_creator", nn.Sequential(
-                        _DenseBlock(32, 896, 4, 32, 0, False),
-                        nn.BatchNorm2d(1920),
-                        nn.Conv2d(1920, n_classes, kernel_size=1, padding=0, bias=False),
-                        nn.BatchNorm2d(n_classes),
-                        nn.ReLU(),
-                        nn.Conv2d(n_classes, 1, kernel_size=3, padding=1, bias=False),
-                        nn.BatchNorm2d(1),
-                        nn.Sigmoid()
-                    ))
-                ]
-            )
-        )
-        self.attention_branch2 = Attention(896, 7)
+        self.attention_branch = Attention(896, 7)
 
         self.last_conv_block = baseline_model.features.denseblock4
         self.las_bn = baseline_model.features.norm5
@@ -211,8 +195,31 @@ class DenseNet201ABNVITGAP(nn.Module):
 
     def get_activations(self, x):
         x = self.feature_extractor(x)
-        self.att = self.attention_branch(x)
+        self.att = x.flatten(2) #16, 896, 49
+        self.att = self.att.reshape(self.att.shape[0], self.att.shape[2], self.att.shape[1])
+        self.att = self.attention_branch(self.att)#16, 896, 49
+        self.att = self.attention_branch.attn_drop_activation
 
+        result = torch.eye(self.att.shape[-1]) #49x49
+        attention_heads_fused = self.att.min(axis=1)[0] #16, 49
+
+        flat = attention_heads_fused.view(attention_heads_fused.size(0), -1)
+        _, indices = flat.topk(int(flat.size(-1)*0.9), -1, False)
+        indices = indices[indices != 0]
+        flat[0, indices] = 0
+
+        I = torch.eye(attention_heads_fused.size(-1))
+        a = (attention_heads_fused + 1.0*I)/2
+
+        final_result = torch.zeros(a.shape[0], a.shape[1], a.shape[2])
+        i = 0
+        for b in a:
+            final_result[i,:,:] = torch.matmul((b / b.sum(dim=-1)), result)
+            i+=1
+
+        self.att = final_result.mean(dim=1)
+        self.att = self.att.reshape(final_result.shape[0], 1, 7, 7)
+        
         rx = x * self.att
         rx = rx + x
 
@@ -224,8 +231,8 @@ class DenseNet201ABNVITGAP(nn.Module):
         x = self.feature_extractor(x)
         self.att = x.flatten(2) #16, 896, 49
         self.att = self.att.reshape(self.att.shape[0], self.att.shape[2], self.att.shape[1])
-        self.att = self.attention_branch2(self.att)#16, 896, 49
-        self.att = self.attention_branch2.attn_drop_activation
+        self.att = self.attention_branch(self.att)#16, 896, 49
+        self.att = self.attention_branch.attn_drop_activation
 
         result = torch.eye(self.att.shape[-1]) #49x49
         attention_heads_fused = self.att.min(axis=1)[0] #16, 49

@@ -1,6 +1,5 @@
-import torch
+from torchvision.models import densenet201, resnet50
 
-model = torch.hub.load('facebookresearch/deit:main', 
-'deit_tiny_patch16_224', pretrained=True)
+model = densenet201(weights='IMAGENET1K_V1')
 
 print(model)

@@ -4,7 +4,6 @@ import json
 import random
 import shutil
 import numpy as np
-import intel_extension_for_pytorch as ipex
 
 from torch import nn
 from torch import load
@@ -40,8 +39,8 @@ class TrainerFramework(ABC):
         self.device = 'cuda' if cuda.is_available() else 'cpu'
         self.model = model
         self.optimizer = self.__get_optimizer(optm_type=optimizer)
-        if self.device == 'cpu':
-            self.model, self.optimizer = ipex.optimize(model=model, optimizer=self.optimizer)
+        # if self.device == 'cpu':
+        #     self.model, self.optimizer = ipex.optimize(model=model, optimizer=self.optimizer)
 
         # Training configuration
         self.criterion = self.__get_criterion()

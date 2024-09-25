@@ -37,7 +37,7 @@ class TrainerFramework(ABC):
 
         # Model configuration and optimizer configuration
         self.device = 'cuda' if cuda.is_available() else 'cpu'
-        self.model = model
+        self.model = model.to(device=self.device)
         self.optimizer = self.__get_optimizer(optm_type=optimizer)
         # if self.device == 'cpu':
         #     self.model, self.optimizer = ipex.optimize(model=model, optimizer=self.optimizer)

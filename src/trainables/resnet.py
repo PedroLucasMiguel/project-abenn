@@ -64,7 +64,7 @@ class ResNet50ABNCFGAP(TrainerFramework):
         x, y = batch[0].to(self.device), batch[1].to(self.device)
         y_pred = self.trainable_model(x)
         loss = self.criterion(y_pred, y)
-        att = np.asarray(self.trainable_model.att.detach())
+        att = np.asarray(self.trainable_model.att.detach().cpu())
 
         cam_normalized = np.zeros((att.shape[0], att.shape[2], att.shape[3]))
 

@@ -30,7 +30,7 @@ class DenseNet201ABNCF(TrainerFramework):
         y_pred = self.trainable_model(x)
         loss = self.criterion(y_pred, y)
 
-        att = self.trainable_model.att.detach()
+        att = self.trainable_model.att.detach().cpu()
         att = np.asarray(att)
         cam_normalized = np.zeros((att.shape[0], att.shape[2], att.shape[3]))
 
@@ -83,7 +83,7 @@ class DenseNet201ABNCFGAP(TrainerFramework):
     y_pred = self.trainable_model(x)
     loss = self.criterion(y_pred, y)
 
-    att = self.trainable_model.att.detach()
+    att = self.trainable_model.att.detach().cpu()
     att = np.asarray(att)
     cam_normalized = np.zeros((att.shape[0], att.shape[2], att.shape[3]))
 
@@ -134,7 +134,7 @@ class TrainableDenseNet201ABNVITCFGAP(TrainerFramework):
     y_pred = self.trainable_model(x)
     loss = self.criterion(y_pred, y)
 
-    att = self.trainable_model.att.detach()
+    att = self.trainable_model.att.detach().cpu()
     att = np.asarray(att)
     cam_normalized = np.zeros((att.shape[0], att.shape[2], att.shape[3]))
 

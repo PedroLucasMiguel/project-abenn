@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class ResNetGradCAM(nn.Module):
     def __init__(self, model, n_classes:int, *args, **kwargs,) -> None:
         super().__init__(*args, **kwargs)
         self.model = model
-        self.model.fc = nn.Linear(2048, n_classes);
+        print(model)
+        self.model.fc = nn.Linear(2048, n_classes)
 
         self.gradients = None
 
@@ -36,8 +36,8 @@ class ResNetGradCAM(nn.Module):
         out = self.model.layer3(out)
         out = self.model.layer4(out)
 
-        out = F.relu(out, inplace=True)
-        out = F.adaptive_avg_pool2d(out, (1, 1))
+        out = self.model.avgpool(out)
+
         if out.requires_grad:
             h = out.register_hook(self.activations_hook)
 

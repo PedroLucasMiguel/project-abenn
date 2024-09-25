@@ -1,13 +1,15 @@
 import os
 import numpy as np
 from torch import nn, no_grad
+from torchvision.models import resnet50 as resnet50_baseline
 from .trainer.trainer import TrainerFramework
 from .models.resnet_abn_cf_gap import resnet50_cf_gap
 from .models.resnet_abn import resnet50
+from .models.resnet_baseline import ResNetGradCAM
 from .global_config import *
 
 
-class ResNet50ABN(TrainerFramework):
+class TrainableResNet50ABN(TrainerFramework):
     def __init__(self, dataset_name: str) -> None:
         self.n_classes = len(os.listdir(os.path.join('..', 'datasets', dataset_name)))
         self.trainable_model = resnet50(True, num_classes=self.n_classes)
@@ -44,7 +46,7 @@ class ResNet50ABN(TrainerFramework):
             return y_pred, y
 
 
-class ResNet50ABNCFGAP(TrainerFramework):
+class TrainableResNet50ABNCFGAP(TrainerFramework):
     def __init__(self, dataset_name: str) -> None:
         self.n_classes = len(os.listdir(os.path.join('..', 'datasets', dataset_name)))
         self.trainable_model = resnet50_cf_gap(True, num_classes=self.n_classes)
@@ -91,22 +93,26 @@ class ResNet50ABNCFGAP(TrainerFramework):
             x, y = batch[0].to(self.device), batch[1].to(self.device)
             y_pred = self.trainable_model(x)
             return y_pred, y
-        
-class ResNet50ABNCF(TrainerFramework):
+
+class ResNet50Baseline(TrainerFramework):
     def __init__(self, dataset_name: str) -> None:
         self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
-        self.trainable_model = resnet50(True, num_classes=self.n_classes)
-        self.trainable_model.fc = nn.Linear(512 * self.trainable_model.block.expansion, self.n_classes)
+        self.trainable_model = ResNetGradCAM(resnet50_baseline(weights='IMAGENET1K_V1'), n_classes=self.n_classes)
+
+        super().__init__(epochs=EPOCHS,
+                         batch_size=BATCH_SIZE,
+                         optimizer=OPTIMIZER,
+                         lr=LEARNING_RATE,
+                         model=self.trainable_model,
+                         dataset_name=dataset_name,
+                         use_augmentation=False)
 
     def train_step(self, engine, batch):
         self.trainable_model.train()
         self.optimizer.zero_grad()
         x, y = batch[0].to(self.device), batch[1].to(self.device)
-        att_outputs, outputs, _ = self.trainable_model(x)
-
-        att_loss = self.criterion(att_outputs, y)
-        per_loss = self.criterion(outputs, y)
-        loss = att_loss + per_loss
+        y_pred = self.trainable_model(x)
+        loss = self.criterion(y_pred, y)
 
         loss.backward()
         self.optimizer.step()
@@ -117,5 +123,5 @@ class ResNet50ABNCF(TrainerFramework):
         self.trainable_model.eval()
         with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
-            _, y_pred, _ = self.trainable_model(x)
+            y_pred = self.trainable_model(x)
             return y_pred, y

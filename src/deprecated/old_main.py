@@ -5,8 +5,8 @@ import numpy as np
 import torch.nn as nn
 
 from src.trainables.models.resnet_abn import resnet50
-from src.trainables.models.resnet_abn_cf import resnet50_cf
-from src.trainables.models.densenet import DenseNet201ABENN
+from src.deprecated.resnet_abn_cf import resnet50_cf
+from src.trainables.models.densenet_abn import DenseNet201ABENN
 from src.trainables.models.densenet_abn_vit_cf_gap import DenseNet201ABNVITGAP
 from src.trainables.models.resnet_abn_cf_gap import resnet50_cf_gap
 from src.trainables.models.densenet_abn_cf_gap import DenseNet201ABNGAP

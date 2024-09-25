@@ -10,7 +10,9 @@ if __name__ == '__main__':
                     'DENSENET201_ABN_CF',
                     'DENSENET201_ABN_CF_GAP',
                     'DENSENET201_ABN_VIT_CF_GAP',
-                    'RESNET50_ABN']
+                    'RESNET50_ABN'
+                    'RESNET50',
+                    'DENSENET201']
 
     # Datasets
     #dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
@@ -35,20 +37,26 @@ if __name__ == '__main__':
     for dn in dts1:
         match args.model:
             case 'RESNET50_ABN_CF_GAP':
-                trainable = ResNet50ABNCFGAP(dataset_name=dn)
+                trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
                 trainable.procedure('RESNET50_ABN_CF_GAP')
             case 'RESNET50_ABN':
-                trainable = ResNet50ABN(dataset_name=dn)
+                trainable = TrainableResNet50ABN(dataset_name=dn)
                 trainable.procedure('RESNET50_ABN')
             case 'RESNET50_ABN_CF':
                 trainable = ResNet50ABNCF(dataset_name=dn)
                 trainable.procedure('RESNET50_ABN_CF')
             case 'DENSENET201_ABN_CF':
-                trainable = DenseNet201ABNCF(dataset_name=dn)
+                trainable = TrainableDenseNet201ABN(dataset_name=dn)
                 trainable.procedure('DENSENET201_ABN_CF')
             case 'DENSENET201_ABN_CF_GAP':
-                trainable = DenseNet201ABNCFGAP(dataset_name=dn)
+                trainable = TrainableDenseNet201ABNCFGAP(dataset_name=dn)
                 trainable.procedure('DENSENET201_ABN_CF_GAP')
             case 'DENSENET201_ABN_VIT_CF_GAP':
                 trainable = TrainableDenseNet201ABNVITCFGAP(dataset_name=dn)
                 trainable.procedure('DENSENET201_ABN_VIT_CF_GAP')
+            case 'RESNET50':
+                trainable = ResNet50Baseline(dataset_name=dn)
+                trainable.procedure('RESNET50')
+            case 'DENSENET201':
+                trainable = TrainableDenseNet201Baseline(dataset_name=dn)
+                trainable.procedure('DENSENET201')

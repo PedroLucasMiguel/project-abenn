@@ -4,9 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch import cuda
-
-from matplotlib import pyplot as plt
 
 
 class _DenseLayer(nn.Module):
@@ -254,16 +251,7 @@ class DenseNet201ABNVITGAP(nn.Module):
 
         self.att = final_result.mean(dim=1)
         self.att = self.att.reshape(final_result.shape[0], 1, 7, 7)
-        # self.att = self.att.reshape(self.att.shape[0], 896, 7, 7)
-        # self.att = self.attention_branch(self.att)
-        #self.att = self.attention_branch(x)
 
-        '''
-            Notas para o Predo do futuro
-            o attention_heads_fused está saindo no formato [batch_size, imagem_flataned]
-            temos que pegar cada um desses batches e calcular o valor de attention rollout para eles
-            armazenando em um novo tensor de formato [batch_size, 1 (por ser uma imagem para cada elemento no batch), 7, 7]
-        '''
         rx = x * self.att
         rx = rx + x
 

@@ -2,13 +2,14 @@ import os
 import numpy as np
 from torch import hub, no_grad
 from .trainer.trainer import TrainerFramework
-from .models.densenet import DenseNet201ABENN
+from .models.densenet_abn import DenseNet201ABENN
 from .models.densenet_abn_cf_gap import DenseNet201ABNGAP
 from .models.densenet_abn_vit_cf_gap import DenseNet201ABNVITGAP
 from .global_config import *
+from .models.densenet_baseline import DenseNetGradCam
 
 
-class DenseNet201ABNCF(TrainerFramework):
+class TrainableDenseNet201ABN(TrainerFramework):
     def __init__(self, dataset_name: str) -> None:
         self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
         self.baseline = hub.load(
@@ -61,7 +62,7 @@ class DenseNet201ABNCF(TrainerFramework):
             return y_pred, y
 
 
-class DenseNet201ABNCFGAP(TrainerFramework):
+class TrainableDenseNet201ABNCFGAP(TrainerFramework):
   def __init__(self, dataset_name: str) -> None:
     self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
     self.baseline = hub.load('pytorch/vision:v0.10.0',
@@ -151,6 +152,39 @@ class TrainableDenseNet201ABNVITCFGAP(TrainerFramework):
     ce = CF * cam_sum
 
     loss = loss - ce.item()
+
+    loss.backward()
+    self.optimizer.step()
+
+    return loss.item()
+
+  def val_step(self, engine, batch):
+    self.trainable_model.eval()
+    with no_grad():
+      x, y = batch[0].to(self.device), batch[1].to(self.device)
+      y_pred = self.trainable_model(x)
+      return y_pred, y
+
+class TrainableDenseNet201Baseline(TrainerFramework):
+  def __init__(self, dataset_name: str) -> None:
+    self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
+    self.baseline = hub.load('pytorch/vision:v0.10.0', 'densenet201', pretrained=True)
+    self.trainable_model = DenseNetGradCam(self.baseline, n_classes=self.n_classes)
+
+    super().__init__(epochs=EPOCHS,
+                         batch_size=BATCH_SIZE,
+                         optimizer=OPTIMIZER,
+                         lr=LEARNING_RATE,
+                         model=self.trainable_model,
+                         dataset_name=dataset_name,
+                         use_augmentation=False)
+
+  def train_step(self, engine, batch):
+    self.trainable_model.train()
+    self.optimizer.zero_grad()
+    x, y = batch[0].to(self.device), batch[1].to(self.device)
+    y_pred = self.trainable_model(x)
+    loss = self.criterion(y_pred, y)
 
     loss.backward()
     self.optimizer.step()

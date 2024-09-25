@@ -201,7 +201,7 @@ class DenseNet201ABNVITGAP(nn.Module):
         self.att = self.attention_branch(self.att)#16, 896, 49
         self.att = self.attention_branch.attn_drop_activation
 
-        result = torch.eye(self.att.shape[-1]).to('cuda' if cuda.is_available() else 'cpu') #49x49
+        result = torch.eye(self.att.shape[-1]).to(self.att.device) #49x49
         attention_heads_fused = self.att.min(axis=1)[0] #16, 49
 
         flat = attention_heads_fused.view(attention_heads_fused.size(0), -1)
@@ -209,10 +209,10 @@ class DenseNet201ABNVITGAP(nn.Module):
         indices = indices[indices != 0]
         flat[0, indices] = 0
 
-        I = torch.eye(attention_heads_fused.size(-1)).to('cuda' if cuda.is_available() else 'cpu')
+        I = torch.eye(attention_heads_fused.size(-1)).to(self.att.device)
         a = (attention_heads_fused + 1.0*I)/2
 
-        final_result = torch.zeros(a.shape[0], a.shape[1], a.shape[2]).to('cuda' if cuda.is_available() else 'cpu')
+        final_result = torch.zeros(a.shape[0], a.shape[1], a.shape[2]).to(self.att.device)
         i = 0
         for b in a:
             final_result[i,:,:] = torch.matmul((b / b.sum(dim=-1)), result)

@@ -245,7 +245,7 @@ class DenseNet201ABNVITGAP(nn.Module):
         I = torch.eye(attention_heads_fused.size(-1)).to('cuda')
         a = (attention_heads_fused + 1.0*I)/2
 
-        final_result = torch.zeros(a.shape[0], a.shape[1], a.shape[2])
+        final_result = torch.zeros(a.shape[0], a.shape[1], a.shape[2]).to('cuda')
         i = 0
         for b in a:
             final_result[i,:,:] = torch.matmul((b / b.sum(dim=-1)), result)

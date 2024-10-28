@@ -18,8 +18,8 @@ if __name__ == '__main__':
                     'EFFICIENTNET_ABN_CF_GAP']
 
     # Datasets
-    #dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
-    dts1 = ['UCSB']
+    dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
+    #dts1 = ['UCSB']
 
     parser = argparse.ArgumentParser(prog='Comparator Framework',
                                      description='This Program enable to compare the explanation os two models.')

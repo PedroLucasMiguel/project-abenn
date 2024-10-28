@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from src.trainables.models.resnet_baseline import ResNetGradCAM
+from .models.resnet_baseline import ResNetGradCAM
 from torch import nn, no_grad
 from torchvision.models import resnet50 as resnet50_baseline
 from .trainer.trainer import TrainerFramework

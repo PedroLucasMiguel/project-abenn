@@ -28,11 +28,8 @@ class TrainableDenseNet201ABN(TrainerFramework):
         self.trainable_model.train()
         self.optimizer.zero_grad()
         x, y = batch[0].to(self.device), batch[1].to(self.device)
-        att_outputs, outputs, _ = self.trainable_model(x)
-
-        att_loss = self.criterion(att_outputs, y)
-        per_loss = self.criterion(outputs, y)
-        loss = att_loss + per_loss
+        y_pred = self.trainable_model(x)
+        loss = self.criterion(y_pred, y)
 
         loss.backward()
         self.optimizer.step()
@@ -43,7 +40,7 @@ class TrainableDenseNet201ABN(TrainerFramework):
         self.trainable_model.eval()
         with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
-            _, y_pred, _ = self.trainable_model(x)
+            y_pred = self.trainable_model(x)
             return y_pred, y
 
 

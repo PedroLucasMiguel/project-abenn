@@ -41,7 +41,7 @@ class TrainableResNet50ABN(TrainerFramework):
 
     def val_step(self, engine, batch):
         self.trainable_model.eval()
-        with self.trainable_model.no_grad():
+        with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
             _, y_pred, _ = self.trainable_model(x)
             return y_pred, y

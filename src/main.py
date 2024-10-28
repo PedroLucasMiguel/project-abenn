@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
     valid_models = ['RESNET50_ABN_CF',
                     'RESNET50_ABN_CF_GAP',
-                    'DENSENET201_ABN_CF',
+                    'DENSENET201_ABN',
                     'DENSENET201_ABN_CF_GAP',
                     'DENSENET201_ABN_VIT_CF_GAP',
                     'RESNET50_ABN'
@@ -45,9 +45,9 @@ if __name__ == '__main__':
             case 'RESNET50_ABN':
                 trainable = TrainableResNet50ABN(dataset_name=dn)
                 trainable.procedure('RESNET50_ABN')
-            case 'DENSENET201_ABN_CF':
+            case 'DENSENET201_ABN':
                 trainable = TrainableDenseNet201ABN(dataset_name=dn)
-                trainable.procedure('DENSENET201_ABN_CF')
+                trainable.procedure('DENSENET201_ABN')
             case 'DENSENET201_ABN_CF_GAP':
                 trainable = TrainableDenseNet201ABNCFGAP(dataset_name=dn)
                 trainable.procedure('DENSENET201_ABN_CF_GAP')

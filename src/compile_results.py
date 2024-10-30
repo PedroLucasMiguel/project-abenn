@@ -50,8 +50,8 @@ def compile_results(json_path_1, json_path_2) -> None:
     i = 0
 
     for r in results:
-        print(
-            f"{m_labels[i]} in the {'FIRST' if r[0] > r[1] else 'SECOND'} model is better in {abs((((r[0] / n_samples) - (r[1] / n_samples)) * 100)):2f}% more cases")
+        # print(
+        #     f"{m_labels[i]} in the {'FIRST' if r[0] > r[1] else 'SECOND'} model is better in {abs((((r[0] / n_samples) - (r[1] / n_samples)) * 100)):2f}% more cases")
         print(f"{m_labels[i]} is {sumns[i][0] / n_samples} | {sumns[i][1] / n_samples}\n")
 
         i += 1
@@ -59,6 +59,7 @@ def compile_results(json_path_1, json_path_2) -> None:
 
 if __name__ == "__main__":
     #models_to_compare = ['RESNET_ABN_CF_GAP', 'RESNET_ABN']
+    #models_to_compare = ['DENSENET201_ABN_CF_GAP', 'DENSENET201']
     models_to_compare = ['EFFICIENTNET_ABN_CF_GAP', 'EFFICIENTNET']
 
     folders = os.listdir(f"../output/{models_to_compare[0]}")

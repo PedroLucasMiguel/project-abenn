@@ -60,7 +60,7 @@ def compile_results(json_path_1, json_path_2) -> None:
 if __name__ == "__main__":
     #models_to_compare = ['RESNET_ABN_CF_GAP', 'RESNET_ABN']
     #models_to_compare = ['DENSENET201_ABN_CF_GAP', 'DENSENET201']
-    models_to_compare = ['EFFICIENTNET_ABN_CF_GAP', 'EFFICIENTNET']
+    models_to_compare = ['COATNET_ABN_CF_GAP', 'COATNETB0']
 
     folders = os.listdir(f"../output/{models_to_compare[0]}")
 

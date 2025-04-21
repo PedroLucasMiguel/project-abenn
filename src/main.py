@@ -3,6 +3,7 @@ import argparse
 from trainables.resnet import *
 from trainables.densenet import *
 from trainables.efficientnet import *
+from trainables.coatnet import *
 
 if __name__ == '__main__':
 
@@ -15,7 +16,8 @@ if __name__ == '__main__':
                     'RESNET50',
                     'DENSENET201',
                     'EFFICIENTNET',
-                    'EFFICIENTNET_ABN_CF_GAP']
+                    'EFFICIENTNET_ABN_CF_GAP',
+                    'COATNETB0']
 
     # Datasets
     dts1 = ['CR', 'LA', 'LG', 'NHL', 'UCSB']
@@ -66,3 +68,9 @@ if __name__ == '__main__':
             case 'EFFICIENTNET_ABN_CF_GAP':
                 trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
                 trainable.procedure('EFFICIENTNET_ABN_CF_GAP')
+            case 'COATNETB0':
+                trainable = TrainableCoatNetBaseline(dataset_name=dn)
+                trainable.procedure('COATNETB0')
+            case 'COATNET_ABN_CF_GAP':
+                trainable = TrainableCoatNetABNCFGAP(dataset_name=dn)
+                trainable.procedure('COATNET_ABN_CF_GAP')

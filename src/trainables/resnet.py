@@ -6,7 +6,6 @@ from torchvision.models import resnet50 as resnet50_baseline
 from .trainer.trainer import TrainerFramework
 from .models.resnet_abn_cf_gap import resnet50_cf_gap
 from .models.resnet_abn import resnet50
-from .models.efficientnet_baseline import EfficientNetGradCAM
 from .global_config import *
 
 

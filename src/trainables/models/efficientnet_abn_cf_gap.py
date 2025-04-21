@@ -51,8 +51,10 @@ class EfficientNetABNCFGAP(nn.Module):
     
     def forward(self, x):
         x = self.features(x)
+        print(x.shape)
 
         self.att = self.attention_branch(x)
+        print(self.att.shape)
         
         rx = x * self.att
         rx = rx + x

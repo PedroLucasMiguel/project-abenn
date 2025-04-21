@@ -7,4 +7,4 @@ import timm
 
 model = timm.create_model('coatnet_0_rw_224.sw_in1k', pretrained=True)
 
-print(model.stages[1].blocks[2])
+print(model)

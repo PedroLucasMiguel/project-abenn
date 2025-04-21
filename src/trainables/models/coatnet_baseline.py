@@ -20,6 +20,9 @@ class CoatNetGradCAM(nn.Module):
         out = self.model.stem(x)
         out = self.model.stages[0](out)
         out = self.model.stages[1](out)
+
+        out = self.model.stages[2](out)
+        out = self.model.stages[3](out)
         return out
     
     def forward(self, x):
@@ -27,11 +30,12 @@ class CoatNetGradCAM(nn.Module):
         out = self.model.stages[0](out)
         out = self.model.stages[1](out)
 
+        out = self.model.stages[2](out)
+        out = self.model.stages[3](out)
+
         if out.requires_grad:
             h = out.register_hook(self.activations_hook)
 
-        out = self.model.stages[2](out)
-        out = self.model.stages[3](out)
         out = self.model.norm(out)
         out = self.model.head(out)
 

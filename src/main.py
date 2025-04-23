@@ -6,6 +6,7 @@ from trainables.densenet import *
 from trainables.efficientnet import *
 from trainables.coatnet import *
 from trainables.convnext import *
+from trainables.resnext import *
 
 if __name__ == '__main__':
 
@@ -83,3 +84,9 @@ if __name__ == '__main__':
             case 'CONVNEXT_SMALL':
                 trainable = TrainableConvNextSmall(dataset_name=dn)
                 trainable.procedure('CONVNEXT_SMALL')
+            case 'RESNEXT50':
+                trainable = TrainableResNextBaseline(dataset_name=dn)
+                trainable.procedure('RESNEXT50')
+            case 'RESNEXT_ABN_CF_GAP':
+                trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
+                trainable.procedure('RESNEXT50_ABN_CF_GAP')

@@ -1,0 +1,14 @@
+\begin{table}[H]
+\caption{Percentage values of coherence (CO), complexity (COM), drop in confidence (CD) and ADCC for the X model, considering all datasets.}
+\begin{tabularx}{\textwidth}{CCCCC}
+\toprule\textbf{Dataset} & CO$\uparrow$ & COM$\downarrow$ & AD$\downarrow$ & ADCC$\uparrow$ \\\midrule
+UCSB & 28.56 & 0.1 & 55.56 & 56.36 \\
+NHL & 35.96 & 0.07 & 71.43 & 73.06 \\
+CR & 31.74 & 0.13 & 5.74 & 58.11 \\
+LG & 28.54 & 0.24 & 42.5 & 55.08 \\
+LA & 36.22 & 0.24 & 79.75 & 74.22 \\
+\midrule
+\textbf{Mean} & 32.2 & 0.16 & 51.0 & 63.37 \\
+\bottomrule
+\end{tabularx}
+\end{table}

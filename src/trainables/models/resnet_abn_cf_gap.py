@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
+import torch.nn.functional as F
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -214,6 +215,8 @@ class ResNetCfGap(nn.Module):
         rx = rx + x
 
         rx = self.layer4(rx)
+
+        rx = F.relu(rx)
 
         if rx.requires_grad:
             h = rx.register_hook(self.gradients_hook)

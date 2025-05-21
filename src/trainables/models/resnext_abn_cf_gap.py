@@ -68,8 +68,8 @@ class ResNextABNCFGAP(nn.Module):
 
         rx = self.last_block(rx)
 
-        # # Para o grad-cam
-        # rx = F.relu(rx, inplace=True)
+        # Para o grad-cam
+        rx = F.relu(rx, inplace=True)
 
         if rx.requires_grad:
             rx.register_hook(self.activations_hook)

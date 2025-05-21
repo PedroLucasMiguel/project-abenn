@@ -4,13 +4,21 @@ from collections import OrderedDict
 from typing import List
 import torch.nn.functional as F
 from torch import Tensor
+import copy
 
 class EfficientNetABNCFGAP(nn.Module):
     def __init__(self, baseline_model, n_classes:int, *args, **kwargs,) -> None:
         super().__init__(*args, **kwargs)
 
         self.features = nn.Sequential(
-            baseline_model.features[0:8]
+            copy.deepcopy(baseline_model.features[0]),
+            copy.deepcopy(baseline_model.features[1]),
+            copy.deepcopy(baseline_model.features[2]),
+            copy.deepcopy(baseline_model.features[3]),
+            copy.deepcopy(baseline_model.features[4]),
+            copy.deepcopy(baseline_model.features[5]),
+            copy.deepcopy(baseline_model.features[6]),
+            copy.deepcopy(baseline_model.features[7])
         )
 
         self.attention_branch = nn.Sequential(
@@ -24,7 +32,7 @@ class EfficientNetABNCFGAP(nn.Module):
             nn.Sigmoid()
         )
 
-        self.last_block = nn.Sequential(baseline_model.features[8][0], baseline_model.features[8][1])
+        self.last_block = nn.Sequential(copy.deepcopy(baseline_model.features[8][0]), baseline_model.features[8][1], baseline_model.features[8][2])
         self.gap_conv = nn.Conv2d(1280, n_classes, 1)
 
         self.classifier = nn.AvgPool2d(7)
@@ -51,10 +59,8 @@ class EfficientNetABNCFGAP(nn.Module):
     
     def forward(self, x):
         x = self.features(x)
-        print(x.shape)
 
         self.att = self.attention_branch(x)
-        print(self.att.shape)
         
         rx = x * self.att
         rx = rx + x

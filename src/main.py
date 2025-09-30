@@ -7,6 +7,7 @@ from trainables.efficientnet import *
 from trainables.coatnet import *
 from trainables.convnext import *
 from trainables.resnext import *
+from trainables.uniformer import *
 
 if __name__ == '__main__':
 
@@ -47,46 +48,52 @@ if __name__ == '__main__':
         match args.model:
             case 'RESNET50_ABN_CF_GAP':
                 trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
-                trainable.procedure('RESNET50_ABN_CF_GAP')
+                trainable.new_proceadure('RESNET50_ABN_CF_GAP')
             case 'RESNET50_ABN':
                 trainable = TrainableResNet50ABN(dataset_name=dn)
-                trainable.procedure('RESNET50_ABN')
+                trainable.new_proceadure('RESNET50_ABN')
             case 'DENSENET201_ABN':
                 trainable = TrainableDenseNet201ABN(dataset_name=dn)
-                trainable.procedure('DENSENET201_ABN')
+                trainable.new_proceadure('DENSENET201_ABN')
             case 'DENSENET201_ABN_CF_GAP':
                 trainable = TrainableDenseNet201ABNCFGAP(dataset_name=dn)
-                trainable.procedure('DENSENET201_ABN_CF_GAP')
+                trainable.new_proceadure('DENSENET201_ABN_CF_GAP')
             case 'DENSENET201_ABN_VIT_CF_GAP':
                 trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
-                trainable.procedure('DENSENET201_ABN_VIT_CF_GAP')
+                trainable.new_proceadure('DENSENET201_ABN_VIT_CF_GAP')
             case 'RESNET50':
                 trainable = ResNet50Baseline(dataset_name=dn)
-                trainable.procedure('RESNET50')
+                trainable.new_proceadure('RESNET50')
             case 'DENSENET201':
                 trainable = TrainableDenseNet201Baseline(dataset_name=dn)
-                trainable.procedure('DENSENET201')
+                trainable.new_proceadure('DENSENET201')
             case 'EFFICIENTNET':
                 trainable = TrainableEfficientNetBaseline(dataset_name=dn)
-                trainable.procedure('EFFICIENTNET')
+                trainable.new_proceadure('EFFICIENTNET')
             case 'EFFICIENTNET_ABN_CF_GAP':
                 trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
-                trainable.procedure('EFFICIENTNET_ABN_CF_GAP')
+                trainable.new_proceadure('EFFICIENTNET_ABN_CF_GAP')
             case 'COATNETB0':
                 trainable = TrainableCoatNetBaseline(dataset_name=dn)
-                trainable.procedure('COATNETB0')
+                trainable.new_proceadure('COATNETB0')
             case 'COATNET_ABN_CF_GAP':
                 trainable = TrainableCoatNetABNCFGAP(dataset_name=dn)
-                trainable.procedure('COATNET_ABN_CF_GAP')
+                trainable.new_proceadure('COATNET_ABN_CF_GAP')
             case 'CONVNEXT_ABN_CF_GAP':
                 trainable = TrainableConvNextABNCFGAP(dataset_name=dn)
-                trainable.procedure('CONVNEXT_ABN_CF_GAP')
+                trainable.new_proceadure('CONVNEXT_ABN_CF_GAP')
             case 'CONVNEXT_SMALL':
                 trainable = TrainableConvNextSmall(dataset_name=dn)
-                trainable.procedure('CONVNEXT_SMALL')
+                trainable.new_proceadure('CONVNEXT_SMALL')
             case 'RESNEXT50':
                 trainable = TrainableResNextBaseline(dataset_name=dn)
-                trainable.procedure('RESNEXT50')
+                trainable.new_proceadure('RESNEXT50')
             case 'RESNEXT_ABN_CF_GAP':
                 trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
                 trainable.procedure('RESNEXT50_ABN_CF_GAP')
+            case 'UNIFORMER_BASELINE':
+                trainable = TrainableUniformerBaseline(dataset_name=dn)
+                trainable.procedure('UNIFORMER_BASELINE')
+            case 'UNIFORMER_ABN_CF_GAP':
+                trainable = TrainableUniformerABNCFGAP(dataset_name=dn)
+                trainable.procedure('UNIFORMER_ABN_CF_GAP')

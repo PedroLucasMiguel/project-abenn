@@ -1,8 +1,7 @@
 import os
 import numpy as np
-from torch import hub, no_grad
+from torch import no_grad
 from .trainer.trainer import TrainerFramework
-from torchvision.models import efficientnet_b0
 from .global_config import *
 from .models.coatnet_baseline import CoatNetGradCAM
 from .models.coatnet_baseline_abn_cf_gap import CoatNetABNCFGAP

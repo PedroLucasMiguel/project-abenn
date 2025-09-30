@@ -26,7 +26,7 @@ from ignite.engine import Engine, Events, create_supervised_trainer, create_supe
 class TrainerFramework(ABC):
     def __init__(self, epochs: int = 10, batch_size: int = 16, optimizer: str = 'Adamax', lr: float = 0.0001,
                  weight_decay: float = 0.1, momentum: float = 0.9, model: nn.Module = None, dataset_name: str = None,
-                 use_augmentation: bool = True, augmentation_repeats: int = 2) -> None:
+                 use_augmentation: bool = True, get_test_metrics: bool = False, augmentation_repeats: int = 2) -> None:
 
         # Hyper parameters
         self.lr = lr
@@ -48,13 +48,16 @@ class TrainerFramework(ABC):
         # Dataset definition
         self.dataset_name = dataset_name
         self.use_augmentation = use_augmentation
+        self.get_test_metrics = get_test_metrics
 
         # Verifying augmentation
         if self.use_augmentation:
             self.loaders = self.__get_loaders(
                 self.__get_dataset(
-                    self.__generate_augment_dataset(os.path.join('..', 'datasets', self.dataset_name),
-                                                    augmentation_repeats)))
+                    self.__generate_augment_dataset(os.path.join('..', 'datasets', self.dataset_name), augmentation_repeats)))
+        elif self.get_test_metrics:
+            self.loader = self.__get_test_loader(self.__get_test_dataset(
+                os.path.join('..', 'datasets', 'fdp', self.dataset_name)))
         else:
             self.loaders = self.__get_loaders(
                 self.__get_dataset(self.__convert_dataset(os.path.join('..', 'datasets', self.dataset_name))))
@@ -66,10 +69,12 @@ class TrainerFramework(ABC):
         classes.sort()
 
         n_classes = len(classes)
-        print(f'Trainer Framework - The current dataset have {n_classes} classes')
+        print(
+            f'Trainer Framework - The current dataset have {n_classes} classes')
 
         # Defining the dataset structure
-        dataset_path = dataset_dir + f'_{n_classes}_CV{"_" + suffix if suffix else ""}'
+        dataset_path = dataset_dir + \
+            f'_{n_classes}_CV{"_" + suffix if suffix else ""}'
         dataset_train_path = os.path.join(dataset_path, 'train')
         dataset_test_path = os.path.join(dataset_path, 'test')
         dataset_val_path = os.path.join(dataset_path, 'val')
@@ -89,7 +94,8 @@ class TrainerFramework(ABC):
                 os.mkdir(os.path.join(dataset_val_path, c))
                 n_samples += len(os.listdir(os.path.join(dataset_dir, c)))
 
-            print(f'Trainer Framework - N° of images in the dataset: {n_samples}')
+            print(
+                f'Trainer Framework - N° of images in the dataset: {n_samples}')
 
             # Calculating the number of images that must be present in the validation step
             # For now, we just assume a 70/15/15 split
@@ -102,7 +108,7 @@ class TrainerFramework(ABC):
                 The next loop do the following:
                 1° Randomly select one of the classes in the dataset
                 2° Randomly selects if the image will be assign to the validation or test sets
-                3° If we filled the val/test sets, or the image "failed" in both tests, assign the image to the train 
+                3° If we filled the val/test sets, or the image "failed" in both tests, assign the image to the train
                    set
             '''
             for _ in range(n_samples):
@@ -112,7 +118,8 @@ class TrainerFramework(ABC):
 
                 # Testing for validation
                 if bool(random.getrandbits(1)) and val_samples_counter < val_split:
-                    shutil.copyfile(os.path.join(dataset_dir, c, img), os.path.join(dataset_val_path, c, img))
+                    shutil.copyfile(os.path.join(dataset_dir, c, img),
+                                    os.path.join(dataset_val_path, c, img))
                     val_samples_counter += 1
                     continue
 
@@ -124,7 +131,8 @@ class TrainerFramework(ABC):
                     continue
 
                 # Assign to the training set
-                shutil.copyfile(os.path.join(dataset_dir, c, img), os.path.join(dataset_train_path, c, img))
+                shutil.copyfile(os.path.join(dataset_dir, c, img),
+                                os.path.join(dataset_train_path, c, img))
 
         # If we fail to create the folders, we just assume that the dataset is already converted
         except OSError as _:
@@ -136,7 +144,8 @@ class TrainerFramework(ABC):
     def __generate_augment_dataset(self, dataset_dir: str, repeats: int) -> str:
 
         try:
-            aug_dataset_path = self.__convert_dataset(dataset_dir=dataset_dir, suffix='augmented')
+            aug_dataset_path = self.__convert_dataset(
+                dataset_dir=dataset_dir, suffix='augmented')
             classes = os.listdir(aug_dataset_path)
             aug_dataset_train_path = os.path.join(aug_dataset_path, 'train')
 
@@ -149,10 +158,12 @@ class TrainerFramework(ABC):
                     transforms.RandomRotation(20),
                 ])
 
-                dataset = datasets.ImageFolder(aug_dataset_train_path, preprocess)
+                dataset = datasets.ImageFolder(
+                    aug_dataset_train_path, preprocess)
 
                 for d_img, label in dataset:
-                    cv2.imwrite(f"{aug_dataset_train_path}/{classes[label]}/{c}.png", np.asarray(d_img))
+                    cv2.imwrite(
+                        f"{aug_dataset_train_path}/{classes[label]}/{c}.png", np.asarray(d_img))
                     c += 1
 
             print('Trainer Framework - The Dataset was augmented successfully')
@@ -167,12 +178,26 @@ class TrainerFramework(ABC):
         preprocess = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
+                                 0.229, 0.224, 0.225]),
         ])
 
         # Loading the dataset
         return (datasets.ImageFolder(os.path.join(dataset_dir, 'train'), preprocess),
                 datasets.ImageFolder(os.path.join(dataset_dir, 'val'), preprocess))
+
+    @staticmethod
+    def __get_test_dataset(dataset_dir: str):
+        # Defining the transformations for the dataset
+        preprocess = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
+                                 0.229, 0.224, 0.225]),
+        ])
+
+        # Loading the dataset
+        return datasets.ImageFolder(dataset_dir, preprocess)
 
     def __get_loaders(self, dataset):
         # Creating trainer loader
@@ -193,6 +218,16 @@ class TrainerFramework(ABC):
 
         return train_loader, val_loader
 
+    @staticmethod
+    def __get_test_loader(dataset):
+        test_loader = data.DataLoader(
+            dataset,
+            batch_size=1,
+            shuffle=True,
+            pin_memory=True,
+        )
+        return test_loader
+
     def __get_optimizer(self, optm_type: str = 'Adamax') -> Optimizer:
         match optm_type:
             case 'Adam':
@@ -207,7 +242,8 @@ class TrainerFramework(ABC):
                 return optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay,
                                  momentum=self.momentum)
             case _:
-                print('Trainer Framework: Optimizer not supported. Defaulting to Adamax...')
+                print(
+                    'Trainer Framework: Optimizer not supported. Defaulting to Adamax...')
                 return optim.Adamax(self.model.parameters(), lr=self.lr)
 
     def __get_criterion(self):
@@ -234,7 +270,7 @@ class TrainerFramework(ABC):
             "precision": Precision(average='weighted'),
             "recall": Recall(average='weighted'),
             "f1": (Precision(average='weighted') * Recall(average='weighted') * 2 / (
-                    Precision(average='weighted') + Recall(average='weighted'))),
+                Precision(average='weighted') + Recall(average='weighted'))),
             "loss": Loss(self.criterion)
         }
 
@@ -246,9 +282,11 @@ class TrainerFramework(ABC):
         if len(self.__abstractmethods__) > 0:
             for f in self.__abstractmethods__:
                 if f == 'train_step':
-                    trainer = create_supervised_trainer(model, self.optimizer, self.criterion, self.device)
+                    trainer = create_supervised_trainer(
+                        model, self.optimizer, self.criterion, self.device)
                 elif f == 'val_step':
-                    validator = create_supervised_evaluator(model, val_metrics, self.device)
+                    validator = create_supervised_evaluator(
+                        model, val_metrics, self.device)
         '''
 
         # Attaching metrics
@@ -269,7 +307,8 @@ class TrainerFramework(ABC):
 
             final_json[ig_trainer.state.epoch] = metrics
 
-            print(f'Validation Results - Epoch[{ig_trainer.state.epoch}] {final_json[ig_trainer.state.epoch]}')
+            print(
+                f'Validation Results - Epoch[{ig_trainer.state.epoch}] {final_json[ig_trainer.state.epoch]}')
 
         # Defining that the F1 metric will be responsible for the checkpoints
         def score_function(engine):
@@ -277,7 +316,8 @@ class TrainerFramework(ABC):
 
         # Checkpoints configuration
         model_checkpoint = ModelCheckpoint(
-            dirname=os.path.join('..', 'output', output_folder_name, self.dataset_name),
+            dirname=os.path.join(
+                '..', 'output', output_folder_name, self.dataset_name),
             require_empty=False,
             n_saved=1,
             filename_prefix=f'train',
@@ -287,9 +327,11 @@ class TrainerFramework(ABC):
         )
 
         # Attaching the checkpoint mechanism to each run of the validation
-        validator.add_event_handler(Events.COMPLETED, model_checkpoint, {"models": model})
+        validator.add_event_handler(
+            Events.COMPLETED, model_checkpoint, {"models": model})
 
-        print(f'\nTraining the {model.__class__.__name__} models on device: {self.device}')
+        print(
+            f'\nTraining the {model.__class__.__name__} models on device: {self.device}')
 
         # Running everything for self.epochs
         trainer.run(train_loader, max_epochs=self.epochs)
@@ -304,5 +346,102 @@ class TrainerFramework(ABC):
         model.load_state_dict(load(model_checkpoint.last_checkpoint))
 
         # Calculating the CAM metrics
-        test_dataset_dir = os.path.join('..', 'datasets', self.dataset_name, 'test')
-        get_cam_metrics(model, output_folder_name, self.dataset_name, test_dataset_dir)
+        test_dataset_dir = os.path.join(
+            '..', 'datasets', self.dataset_name, 'test')
+        get_cam_metrics(model, output_folder_name,
+                        self.dataset_name, test_dataset_dir)
+
+    def new_proceadure(self, output_folder_name: str):
+        model = self.model
+
+        if self.dataset_name == 'CR':
+            self.dataset_name = 'CR_2_CV'
+        elif self.dataset_name == 'LA':
+            self.dataset_name = 'LA_4_CV'
+        elif self.dataset_name == 'LG':
+            self.dataset_name = 'LG_2_CV'
+        elif self.dataset_name == 'NHL':
+            self.dataset_name = 'NHL_3_CV'
+        elif self.dataset_name == 'UCSB':
+            self.dataset_name = 'UCSB_2_CV'
+
+        model = model.load_state_dict(load(os.path.join('..', 'output', output_folder_name, self.dataset_name, ' '.join(f for f in os.listdir(os.path.join('..', 'output', output_folder_name, self.dataset_name)) if f.endswith('.pt')))))
+        test_loader = self.loader
+
+        final_json = {}
+
+        # Pytorch-ignite bit
+        val_metrics = {
+            "accuracy": Accuracy(),
+            "precision": Precision(average='weighted'),
+            "recall": Recall(average='weighted'),
+            "f1": (Precision(average='weighted') * Recall(average='weighted') * 2 / (
+                Precision(average='weighted') + Recall(average='weighted'))),
+            "loss": Loss(self.criterion)
+        }
+
+        # Here, we check if a method is actually not overwritten by the class
+        #trainer = Engine(self.train_step)
+        validator = Engine(self.val_step)
+
+        # Attaching metrics
+        for name, metric in val_metrics.items():
+            metric.attach(validator, name)
+
+        # Creating the loading bards
+        #train_bar = ProgressBar(desc="Training...")
+        val_bar = ProgressBar(desc="Evaluating...")
+        #train_bar.attach(trainer)
+        val_bar.attach(validator)
+
+        # Defining that after each epoch, we should run the validator once and show the metrics on screen
+        #@trainer.on(Events.EPOCH_COMPLETED)
+        @validator.on(Events.EPOCH_COMPLETED)
+        def log_validation_results(ig_validator):
+            metrics = validator.state.metrics
+
+            final_json[ig_validator.state.epoch] = metrics
+
+            print(
+                f'Validation Results - Epoch[{ig_validator.state.epoch}] {final_json[ig_validator.state.epoch]}')
+
+        # # Defining that the F1 metric will be responsible for the checkpoints
+        # def score_function(engine):
+        #     return engine.state.metrics["f1"]
+
+        # # Checkpoints configuration
+        # model_checkpoint = ModelCheckpoint(
+        #     dirname=os.path.join(
+        #         '..', 'output', output_folder_name, self.dataset_name),
+        #     require_empty=False,
+        #     n_saved=1,
+        #     filename_prefix=f'train',
+        #     score_function=score_function,
+        #     score_name='f1',
+        #     global_step_transform=global_step_from_engine(trainer),
+        # )
+
+        # # Attaching the checkpoint mechanism to each run of the validation
+        # validator.add_event_handler(
+        #     Events.COMPLETED, model_checkpoint, {"models": model})
+
+        print(
+            f'\nTraining the {model.__class__.__name__} models on device: {self.device}')
+
+        # Running everything for self.epochs
+        validator.run(test_loader, max_epochs=1)
+
+        ##print(f'\nTrain finished for models {model.__class__.__name__}')
+
+        # Exporting metrics files
+        with open(os.path.join('..', 'output', output_folder_name, self.dataset_name, 'test_results.json'), 'w') as f:
+            json.dump(final_json, f)
+
+        # # Saving the training
+        # model.load_state_dict(load(model_checkpoint.last_checkpoint))
+
+        # # Calculating the CAM metrics
+        # test_dataset_dir = os.path.join(
+        #     '..', 'datasets', self.dataset_name, 'test')
+        # get_cam_metrics(model, output_folder_name,
+        #                 self.dataset_name, test_dataset_dir)

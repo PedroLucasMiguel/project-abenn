@@ -1,17 +1,24 @@
 import os
 import numpy as np
-from torch import hub, no_grad
+from torch import no_grad, load
 from .trainer.trainer import TrainerFramework
-from .models.efficientnet_baseline import EfficientNetGradCAM
-from torchvision.models import efficientnet_b0
 from .global_config import *
-from .models.efficientnet_abn_cf_gap import EfficientNetABNCFGAP
+from .models.coatnet_baseline import CoatNetGradCAM
+# from .models.coatnet_baseline_abn_cf_gap import CoatNetABNCFGAP
+# import timm
+from .models.uniformer_baseline import uniformer_xs
+from .models.uniformer_abn_cf_gap import uniformer_xs_abn_cf_gap
+import torch.nn as nn
 
-class TrainableEfficientNetABNCFGAP(TrainerFramework):
+class TrainableUniformerBaseline(TrainerFramework):
   def __init__(self, dataset_name: str) -> None:
     self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
-    self.baseline = efficientnet_b0('IMAGENET1K_V1')
-    self.trainable_model = EfficientNetABNCFGAP(baseline_model=self.baseline, n_classes=self.n_classes)
+    self.trainable_model = uniformer_xs()
+    self.trainable_model.load_state_dict(load('/home/wsl/git/project-abenn/uniformer_xs_224_in1k.pth'), strict=False)
+    self.trainable_model.head = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
+    self.trainable_model.head_cls = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
+
+    #self.trainable_model = UniformerGradCAM(self.model, num_classes=self.n_classes)
 
     super().__init__(epochs=EPOCHS,
                          batch_size=BATCH_SIZE,
@@ -25,7 +32,42 @@ class TrainableEfficientNetABNCFGAP(TrainerFramework):
     self.trainable_model.train()
     self.optimizer.zero_grad()
     x, y = batch[0].to(self.device), batch[1].to(self.device)
-    y_pred = self.trainable_model(x)
+    y_pred = self.trainable_model(x)[0]
+    loss = self.criterion(y_pred, y)
+
+    loss.backward()
+    self.optimizer.step()
+
+    return loss.item()
+
+  def val_step(self, engine, batch):
+    self.trainable_model.eval()
+    with no_grad():
+      x, y = batch[0].to(self.device), batch[1].to(self.device)
+      y_pred = self.trainable_model(x)
+      return y_pred, y
+    
+class TrainableUniformerABNCFGAP(TrainerFramework):
+  def __init__(self, dataset_name: str) -> None:
+    self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
+    self.trainable_model = uniformer_xs_abn_cf_gap()
+    self.trainable_model.load_state_dict(load('/home/wsl/git/project-abenn/uniformer_xs_224_in1k.pth'), strict=False)
+    self.trainable_model.head = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
+    self.trainable_model.head_cls = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
+
+    super().__init__(epochs=EPOCHS,
+                         batch_size=BATCH_SIZE,
+                         optimizer=OPTIMIZER,
+                         lr=LEARNING_RATE,
+                         model=self.trainable_model,
+                         dataset_name=dataset_name,
+                         use_augmentation=False)
+
+  def train_step(self, engine, batch):
+    self.trainable_model.train()
+    self.optimizer.zero_grad()
+    x, y = batch[0].to(self.device), batch[1].to(self.device)
+    y_pred = self.trainable_model(x)[0]
     loss = self.criterion(y_pred, y)
 
     att = self.trainable_model.att.detach().cpu()
@@ -45,38 +87,6 @@ class TrainableEfficientNetABNCFGAP(TrainerFramework):
     ce = CF * cam_sum
 
     loss = loss - ce.item()
-
-    loss.backward()
-    self.optimizer.step()
-
-    return loss.item()
-
-  def val_step(self, engine, batch):
-    self.trainable_model.eval()
-    with no_grad():
-      x, y = batch[0].to(self.device), batch[1].to(self.device)
-      y_pred = self.trainable_model(x)
-      return y_pred, y
-
-class TrainableEfficientNetBaseline(TrainerFramework):
-  def __init__(self, dataset_name: str) -> None:
-    self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
-    self.trainable_model = EfficientNetGradCAM(efficientnet_b0('IMAGENET1K_V1'), n_classes=self.n_classes)
-
-    super().__init__(epochs=EPOCHS,
-                         batch_size=BATCH_SIZE,
-                         optimizer=OPTIMIZER,
-                         lr=LEARNING_RATE,
-                         model=self.trainable_model,
-                         dataset_name=dataset_name,
-                         use_augmentation=False)
-
-  def train_step(self, engine, batch):
-    self.trainable_model.train()
-    self.optimizer.zero_grad()
-    x, y = batch[0].to(self.device), batch[1].to(self.device)
-    y_pred = self.trainable_model(x)
-    loss = self.criterion(y_pred, y)
 
     loss.backward()
     self.optimizer.step()

@@ -97,7 +97,8 @@ if __name__ == "__main__":
     #models_to_compare = ['CONVNEXT_ABN_CF_GAP', 'CONVNEXT_SMALL']
     #models_to_compare = ['EFFICIENTNET_ABN_CF_GAP', 'EFFICIENTNET',]
     #models_to_compare = ['COATNET_ABN_CF_GAP', 'COATNETB0']
-    models_to_compare = ['RESNEXT50_ABN_CF_GAP', 'RESNEXT50']
+    #models_to_compare = ['RESNEXT50_ABN_CF_GAP', 'RESNEXT50']
+    models_to_compare = ['UNIFORMER_ABN_CF_GAP', 'UNIFORMER_BASELINE']
 
     MODEL = 0
     folders = os.listdir(f"../output/{models_to_compare[MODEL]}")
@@ -120,18 +121,19 @@ if __name__ == "__main__":
 
     i = 0
     with open(f'../tables/{models_to_compare[MODEL]}.txt', 'w') as file:
-        file.writelines(headers)
+        # file.writelines(headers)
+        # for f in folders:
+        #     compile_result_to_table(f"../output/{models_to_compare[MODEL]}/{f}/cam_metrics.json", f.split('_')[0], file, i)
+        #     i += 1
+        # file.write('\\midrule\n')
+        # means = np.mean(toMean, axis=0)
+        # file.write(f'\\textbf{{Mean}} & {round(means[0], 2)} & {round(means[1], 2)} & {round(means[2], 2)} & {round(means[3], 2)} \\\\\n')
+        # file.writelines(footer)
+
         for f in folders:
-            compile_result_to_table(f"../output/{models_to_compare[MODEL]}/{f}/cam_metrics.json", f.split('_')[0], file, i)
-            i += 1
-        file.write('\\midrule\n')
-        means = np.mean(toMean, axis=0)
-        file.write(f'\\textbf{{Mean}} & {round(means[0], 2)} & {round(means[1], 2)} & {round(means[2], 2)} & {round(means[3], 2)} \\\\\n')
-        file.writelines(footer)
+            print(f"{'=' * 80}\n")
+            print(f"\tResults from folder: {f}\n")
 
-        # print(f"{'=' * 80}\n")
-        # print(f"\tResults from folder: {f}\n")
-
-        # compile_results(f"../output/{models_to_compare[0]}/{f}/cam_metrics.json",
-        #                f"../output/{models_to_compare[1]}/{f}/cam_metrics.json")
-        # print(f"\n{'=' * 80}")
+            compile_results(f"../output/{models_to_compare[0]}/{f}/cam_metrics.json",
+                        f"../output/{models_to_compare[1]}/{f}/cam_metrics.json")
+            print(f"\n{'=' * 80}")

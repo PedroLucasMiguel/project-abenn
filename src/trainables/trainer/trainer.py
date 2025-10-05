@@ -5,9 +5,11 @@ import random
 import shutil
 import numpy as np
 
+import torch
 from torch import nn
 from torch import load
 from torch import cuda
+from torch import backends
 from typing import Any
 from torch import optim
 from abc import ABC, abstractmethod
@@ -36,7 +38,15 @@ class TrainerFramework(ABC):
         self.weight_decay = weight_decay
 
         # Model configuration and optimizer configuration
-        self.device = 'cuda' if cuda.is_available() else 'cpu'
+        if cuda.is_available():
+            self.device = 'cuda'
+        elif backends.mps.is_available():
+            if backends.mps.is_built():
+                self.device = 'mps'
+        else:
+            self.device = 'cpu'
+
+        #self.device = 'cuda' if cuda.is_available() else 'cpu'
         self.model = model.to(device=self.device)
         self.optimizer = self.__get_optimizer(optm_type=optimizer)
         # if self.device == 'cpu':
@@ -266,12 +276,12 @@ class TrainerFramework(ABC):
 
         # Pytorch-ignite bit
         val_metrics = {
-            "accuracy": Accuracy(),
-            "precision": Precision(average='weighted'),
-            "recall": Recall(average='weighted'),
-            "f1": (Precision(average='weighted') * Recall(average='weighted') * 2 / (
-                Precision(average='weighted') + Recall(average='weighted'))),
-            "loss": Loss(self.criterion)
+            "accuracy": Accuracy(device=self.device),
+            "precision": Precision(average='weighted', device=self.device),
+            "recall": Recall(average='weighted', device=self.device),
+            "f1": (Precision(average='weighted', device=self.device) * Recall(average='weighted', device=self.device) * 2 / (
+                Precision(average='weighted', device=self.device) + Recall(average='weighted', device=self.device))),
+            "loss": Loss(self.criterion, device=self.device)
         }
 
         # Here, we check if a method is actually not overwritten by the class

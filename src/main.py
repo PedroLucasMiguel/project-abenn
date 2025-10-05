@@ -87,7 +87,7 @@ if __name__ == '__main__':
                 trainable.new_proceadure('CONVNEXT_SMALL')
             case 'RESNEXT50':
                 trainable = TrainableResNextBaseline(dataset_name=dn)
-                trainable.new_proceadure('RESNEXT50')
+                trainable.procedure('RESNEXT50')
             case 'RESNEXT_ABN_CF_GAP':
                 trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
                 trainable.procedure('RESNEXT50_ABN_CF_GAP')

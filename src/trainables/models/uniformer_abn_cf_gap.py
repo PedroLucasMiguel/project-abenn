@@ -206,7 +206,7 @@ class EvoSABlock(nn.Module):
                 x = x + self.drop_path(self.attn(self.norm1(x)))
                 x = x + self.drop_path(self.mlp(self.norm2(x)))
             cls_token, x = x[:, :1], x[:, 1:]
-            x = x.transpose(1, 2).reshape(B, C, H, W)
+            x = x.transpose(1, 2).contiguous().reshape(B, C, H, W)
             return cls_token, x  
         else:
             global global_attn, token_indices
@@ -270,7 +270,7 @@ class EvoSABlock(nn.Module):
             x_ga_ti = torch.cat((x_sorted, global_attn.unsqueeze(-1), token_indices.unsqueeze(-1)), dim=-1)
             x_ga_ti = easy_gather(x_ga_ti, indices)
             x_patch, global_attn, token_indices = x_ga_ti[:, :, :-2], x_ga_ti[:, :, -2], x_ga_ti[:, :, -1]
-            x_patch = x_patch.transpose(1, 2).reshape(B, C, H, W)
+            x_patch = x_patch.transpose(1, 2).contiguous().reshape(B, C, H, W)
 
             if self.downsample:
                 # downsample global attention

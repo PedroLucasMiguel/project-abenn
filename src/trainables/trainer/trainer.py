@@ -485,7 +485,8 @@ class TrainerFramework(ABC):
 
         # Calculating the CAM metrics
         test_dataset_dir = os.path.join(
-            '..', 'datasets', self.dataset_name, 'test')
+            '..', 'datasets', f"{self.dataset_name}_{dt_index}", 'test')
+        
         get_cam_metrics(model, output_folder_name,
                         self.dataset_name, test_dataset_dir, dt_index)
 

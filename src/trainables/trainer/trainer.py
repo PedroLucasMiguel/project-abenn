@@ -28,7 +28,8 @@ from ignite.engine import Engine, Events, create_supervised_trainer, create_supe
 class TrainerFramework(ABC):
     def __init__(self, epochs: int = 10, batch_size: int = 16, optimizer: str = 'Adamax', lr: float = 0.0001,
                  weight_decay: float = 0.1, momentum: float = 0.9, model: nn.Module = None, dataset_name: str = None,
-                 use_augmentation: bool = True, get_test_metrics: bool = False, augmentation_repeats: int = 2) -> None:
+                 use_augmentation: bool = True, get_test_metrics: bool = False, augmentation_repeats: int = 2,
+                 use_repeated_holdout: bool = True, repeatet_holdout_iterations: int = 5) -> None:
 
         # Hyper parameters
         self.lr = lr
@@ -46,7 +47,7 @@ class TrainerFramework(ABC):
         else:
             self.device = 'cpu'
 
-        #self.device = 'cuda' if cuda.is_available() else 'cpu'
+        # self.device = 'cuda' if cuda.is_available() else 'cpu'
         self.model = model.to(device=self.device)
         self.optimizer = self.__get_optimizer(optm_type=optimizer)
         # if self.device == 'cpu':
@@ -59,6 +60,8 @@ class TrainerFramework(ABC):
         self.dataset_name = dataset_name
         self.use_augmentation = use_augmentation
         self.get_test_metrics = get_test_metrics
+        self.use_repeated_holdout = use_repeated_holdout
+        self.repeated_holdout_iterations = repeatet_holdout_iterations
 
         # Verifying augmentation
         if self.use_augmentation:
@@ -68,9 +71,94 @@ class TrainerFramework(ABC):
         elif self.get_test_metrics:
             self.loader = self.__get_test_loader(self.__get_test_dataset(
                 os.path.join('..', 'datasets', 'fdp', self.dataset_name)))
+        elif self.use_repeated_holdout:
+            self.loaders = self.__get_loaders_repeated_holdout(
+                self.__get_datasets_repeated_holdout(self.__convert_datasets_repeated_holdout(os.path.join('..', 'datasets', self.dataset_name))))
         else:
             self.loaders = self.__get_loaders(
                 self.__get_dataset(self.__convert_dataset(os.path.join('..', 'datasets', self.dataset_name))))
+
+    def __convert_datasets_repeated_holdout(self, dataset_dir: str):
+
+        # Getting the class names
+        classes = os.listdir(dataset_dir)
+        classes.sort()
+
+        n_classes = len(classes)
+        print(
+            f'Trainer Framework - The current dataset have {n_classes} classes')
+
+        dataset_paths = []
+        self.dataset_name = f"{self.dataset_name}_{n_classes}_CV"
+
+        for i in range(self.repeated_holdout_iterations):
+            # Defining the dataset structure
+            dataset_path = dataset_dir + \
+                f'_{n_classes}_CV_{i}'
+            dataset_paths.append(dataset_path)
+            dataset_train_path = os.path.join(dataset_path, 'train')
+            dataset_test_path = os.path.join(dataset_path, 'test')
+            dataset_val_path = os.path.join(dataset_path, 'val')
+
+            try:
+                # Creating folders
+                os.mkdir(dataset_path)
+                os.mkdir(dataset_train_path)
+                os.mkdir(dataset_test_path)
+                os.mkdir(dataset_val_path)
+
+                # Calculating the number os samples in each dataset
+                n_samples = 0
+                for c in classes:
+                    os.mkdir(os.path.join(dataset_train_path, c))
+                    os.mkdir(os.path.join(dataset_val_path, c))
+                    n_samples += len(os.listdir(os.path.join(dataset_dir, c)))
+
+                print(
+                    f'Trainer Framework - N° of images in the dataset: {n_samples}')
+
+                # Calculating the number of images that must be present in the validation step
+                # For now, we just assume a 70/15/15 split
+                val_split = test_split = round(n_samples * 0.30) / 2
+
+                val_samples_counter = 0
+                test_samples_counter = 0
+
+                '''
+                    The next loop do the following:
+                    1° Randomly select one of the classes in the dataset
+                    2° Randomly selects if the image will be assign to the validation or test sets
+                    3° If we filled the val/test sets, or the image "failed" in both tests, assign the image to the train
+                    set
+                '''
+                for _ in range(n_samples):
+                    c = random.choice(classes)
+                    samples = os.listdir(f"{dataset_dir}/{c}")
+                    img = np.random.choice(samples)
+
+                    # Testing for validation
+                    if bool(random.getrandbits(1)) and val_samples_counter < val_split:
+                        shutil.copyfile(os.path.join(dataset_dir, c, img),
+                                        os.path.join(dataset_val_path, c, img))
+                        val_samples_counter += 1
+                        continue
+
+                    # Testing for tes
+                    elif bool(random.getrandbits(1)) and test_samples_counter < test_split:
+                        shutil.copyfile(os.path.join(dataset_dir, c, img),
+                                        os.path.join(dataset_test_path, f'{classes.index(c)}_{test_samples_counter}.png'))
+                        test_samples_counter += 1
+                        continue
+
+                    # Assign to the training set
+                    shutil.copyfile(os.path.join(dataset_dir, c, img),
+                                    os.path.join(dataset_train_path, c, img))
+
+            # If we fail to create the folders, we just assume that the dataset is already converted
+            except OSError as _:
+                print('Trainer Framework - The Dataset is already augmented')
+
+        return dataset_paths
 
     def __convert_dataset(self, dataset_dir: str, suffix: str = None):
 
@@ -197,6 +285,23 @@ class TrainerFramework(ABC):
                 datasets.ImageFolder(os.path.join(dataset_dir, 'val'), preprocess))
 
     @staticmethod
+    def __get_datasets_repeated_holdout(dataset_dirs: list[str]):
+        # Defining the transformations for the dataset
+        datasets_to_return = []
+        for dataset_dir in dataset_dirs:
+            preprocess = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
+                    0.229, 0.224, 0.225]),
+            ])
+
+            # Loading the dataset
+            datasets_to_return.append((datasets.ImageFolder(os.path.join(dataset_dir, 'train'), preprocess),
+                                       datasets.ImageFolder(os.path.join(dataset_dir, 'val'), preprocess)))
+        return datasets_to_return
+
+    @staticmethod
     def __get_test_dataset(dataset_dir: str):
         # Defining the transformations for the dataset
         preprocess = transforms.Compose([
@@ -227,6 +332,29 @@ class TrainerFramework(ABC):
         )
 
         return train_loader, val_loader
+    
+    def __get_loaders_repeated_holdout(self, datasets):
+        # Creating trainer loader
+        loaders = []
+        for dataset in datasets:
+            train_loader = data.DataLoader(
+                dataset[0],
+                batch_size=self.batch_size,
+                shuffle=True,
+                pin_memory=True,
+            )
+
+            # Creating val loader
+            val_loader = data.DataLoader(
+                dataset[1],
+                batch_size=self.batch_size,
+                shuffle=True,
+                pin_memory=True,
+            )
+
+            loaders.append((train_loader, val_loader))
+
+        return loaders
 
     @staticmethod
     def __get_test_loader(dataset):
@@ -268,7 +396,104 @@ class TrainerFramework(ABC):
     def val_step(self, engine: Engine, batch: Any):
         pass
 
+    def procedure_repeated_holdout(self, output_folder_name: str, dt_index: int):
+        model = self.model
+        train_loader, val_loader = self.loaders[dt_index]
+
+        final_json = {}
+
+        # Pytorch-ignite bit
+        val_metrics = {
+            "accuracy": Accuracy(device=self.device),
+            "precision": Precision(average='weighted', device=self.device),
+            "recall": Recall(average='weighted', device=self.device),
+            "f1": (Precision(average='weighted', device=self.device) * Recall(average='weighted', device=self.device) * 2 / (
+                Precision(average='weighted', device=self.device) + Recall(average='weighted', device=self.device))),
+            "loss": Loss(self.criterion, device=self.device)
+        }
+
+        # Here, we check if a method is actually not overwritten by the class
+        trainer = Engine(self.train_step)
+        validator = Engine(self.val_step)
+
+        '''
+        if len(self.__abstractmethods__) > 0:
+            for f in self.__abstractmethods__:
+                if f == 'train_step':
+                    trainer = create_supervised_trainer(
+                        model, self.optimizer, self.criterion, self.device)
+                elif f == 'val_step':
+                    validator = create_supervised_evaluator(
+                        model, val_metrics, self.device)
+        '''
+
+        # Attaching metrics
+        for name, metric in val_metrics.items():
+            metric.attach(validator, name)
+
+        # Creating the loading bards
+        train_bar = ProgressBar(desc="Training...")
+        val_bar = ProgressBar(desc="Evaluating...")
+        train_bar.attach(trainer)
+        val_bar.attach(validator)
+
+        # Defining that after each epoch, we should run the validator once and show the metrics on screen
+        @trainer.on(Events.EPOCH_COMPLETED)
+        def log_validation_results(ig_trainer):
+            validator.run(val_loader)
+            metrics = validator.state.metrics
+
+            final_json[ig_trainer.state.epoch] = metrics
+
+            print(
+                f'Validation Results - Epoch[{ig_trainer.state.epoch}] {final_json[ig_trainer.state.epoch]}')
+
+        # Defining that the F1 metric will be responsible for the checkpoints
+        def score_function(engine):
+            return engine.state.metrics["f1"]
+
+        # Checkpoints configuration
+        model_checkpoint = ModelCheckpoint(
+            dirname=os.path.join(
+                '..', 'output', output_folder_name, self.dataset_name),
+            require_empty=False,
+            n_saved=1,
+            filename_prefix=f'train_{dt_index}',
+            score_function=score_function,
+            score_name='f1',
+            global_step_transform=global_step_from_engine(trainer),
+        )
+
+        # Attaching the checkpoint mechanism to each run of the validation
+        validator.add_event_handler(
+            Events.COMPLETED, model_checkpoint, {"models": model})
+
+        print(
+            f'\nTraining the {model.__class__.__name__} models on device: {self.device} (iteration {dt_index})')
+
+        # Running everything for self.epochs
+        trainer.run(train_loader, max_epochs=self.epochs)
+
+        print(f'\nTrain finished for models {model.__class__.__name__}')
+
+        # Exporting metrics files
+        with open(os.path.join('..', 'output', output_folder_name, self.dataset_name, f'training_results_{dt_index}.json'), 'w') as f:
+            json.dump(final_json, f)
+
+        # Saving the training
+        model.load_state_dict(load(model_checkpoint.last_checkpoint))
+
+        # Calculating the CAM metrics
+        test_dataset_dir = os.path.join(
+            '..', 'datasets', self.dataset_name, 'test')
+        get_cam_metrics(model, output_folder_name,
+                        self.dataset_name, test_dataset_dir, dt_index)
+
+
     def procedure(self, output_folder_name: str):
+        if self.use_repeated_holdout:
+            raise TypeError("This procedure should not be user when use_repeated_holdout is enabled.")
+
         model = self.model
         train_loader, val_loader = self.loaders
 
@@ -375,7 +600,8 @@ class TrainerFramework(ABC):
         elif self.dataset_name == 'UCSB':
             self.dataset_name = 'UCSB_2_CV'
 
-        model = model.load_state_dict(load(os.path.join('..', 'output', output_folder_name, self.dataset_name, ' '.join(f for f in os.listdir(os.path.join('..', 'output', output_folder_name, self.dataset_name)) if f.endswith('.pt')))))
+        model = model.load_state_dict(load(os.path.join('..', 'output', output_folder_name, self.dataset_name, ' '.join(
+            f for f in os.listdir(os.path.join('..', 'output', output_folder_name, self.dataset_name)) if f.endswith('.pt')))))
         test_loader = self.loader
 
         final_json = {}
@@ -391,7 +617,7 @@ class TrainerFramework(ABC):
         }
 
         # Here, we check if a method is actually not overwritten by the class
-        #trainer = Engine(self.train_step)
+        # trainer = Engine(self.train_step)
         validator = Engine(self.val_step)
 
         # Attaching metrics
@@ -399,13 +625,13 @@ class TrainerFramework(ABC):
             metric.attach(validator, name)
 
         # Creating the loading bards
-        #train_bar = ProgressBar(desc="Training...")
+        # train_bar = ProgressBar(desc="Training...")
         val_bar = ProgressBar(desc="Evaluating...")
-        #train_bar.attach(trainer)
+        # train_bar.attach(trainer)
         val_bar.attach(validator)
 
         # Defining that after each epoch, we should run the validator once and show the metrics on screen
-        #@trainer.on(Events.EPOCH_COMPLETED)
+        # @trainer.on(Events.EPOCH_COMPLETED)
         @validator.on(Events.EPOCH_COMPLETED)
         def log_validation_results(ig_validator):
             metrics = validator.state.metrics
@@ -441,7 +667,7 @@ class TrainerFramework(ABC):
         # Running everything for self.epochs
         validator.run(test_loader, max_epochs=1)
 
-        ##print(f'\nTrain finished for models {model.__class__.__name__}')
+        # print(f'\nTrain finished for models {model.__class__.__name__}')
 
         # Exporting metrics files
         with open(os.path.join('..', 'output', output_folder_name, self.dataset_name, 'test_results.json'), 'w') as f:

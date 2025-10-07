@@ -86,7 +86,7 @@ def get_grad_cam(model, class_to_backprop: int = 0, img_name=None, img=None):
     return heatmap, img, prob1
 
 
-def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
+def get_cam_metrics(model, identifier, dataset_name, imgs_dir, repeatet_holdout_index: int = -1):
     metrics_json = {}
     output_folder = f"../output/{identifier}/{dataset_name}"
 
@@ -132,8 +132,8 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir):
         metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3),
                                   "adcc": float(adcc)}
 
-        cv2.imwrite(f"{output_folder}/cams/i1_{img_name}.png", i1)
-        cv2.imwrite(f"{output_folder}/cams/i2_{img_name}.png", i2)
+        cv2.imwrite(f"{output_folder}/cams/i1_{img_name}.png" if repeatet_holdout_index == -1 else f"{output_folder}/cams/i1_{img_name}_{repeatet_holdout_index}.png", i1)
+        #cv2.imwrite(f"{output_folder}/cams/i2_{img_name}.png" if repeatet_holdout_index == -1 else f"{output_folder}/cams/i1_{img_name}_{repeatet_holdout_index}.png", i2)
 
-    with open(f"{output_folder}/cam_metrics.json", "w") as f:
+    with open(f"{output_folder}/cam_metrics.json" if repeatet_holdout_index == -1 else f"{output_folder}/cam_metrics_{repeatet_holdout_index}.json", "w") as f:
         json.dump(metrics_json, f)

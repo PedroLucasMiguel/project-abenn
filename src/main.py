@@ -8,6 +8,7 @@ from trainables.coatnet import *
 from trainables.convnext import *
 from trainables.resnext import *
 from trainables.uniformer import *
+from trainables.global_config import REPEATED_HOLDOUT_REPEATS
 
 if __name__ == '__main__':
 
@@ -48,7 +49,7 @@ if __name__ == '__main__':
         match args.model:
             case 'RESNET50_ABN_CF_GAP':
                 trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
-                trainable.new_proceadure('RESNET50_ABN_CF_GAP')
+                trainable.procedure('RESNET50_ABN_CF_GAP')
             case 'RESNET50_ABN':
                 trainable = TrainableResNet50ABN(dataset_name=dn)
                 trainable.new_proceadure('RESNET50_ABN')
@@ -62,8 +63,9 @@ if __name__ == '__main__':
                 trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
                 trainable.new_proceadure('DENSENET201_ABN_VIT_CF_GAP')
             case 'RESNET50':
-                trainable = ResNet50Baseline(dataset_name=dn)
-                trainable.new_proceadure('RESNET50')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = ResNet50Baseline(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('RESNET50', i)
             case 'DENSENET201':
                 trainable = TrainableDenseNet201Baseline(dataset_name=dn)
                 trainable.new_proceadure('DENSENET201')

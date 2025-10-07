@@ -48,8 +48,9 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         match args.model:
             case 'RESNET50_ABN_CF_GAP':
-                trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
-                trainable.procedure('RESNET50_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('RESNET50_ABN_CF_GAP', i)
             case 'RESNET50_ABN':
                 trainable = TrainableResNet50ABN(dataset_name=dn)
                 trainable.new_proceadure('RESNET50_ABN')
@@ -57,8 +58,9 @@ if __name__ == '__main__':
                 trainable = TrainableDenseNet201ABN(dataset_name=dn)
                 trainable.new_proceadure('DENSENET201_ABN')
             case 'DENSENET201_ABN_CF_GAP':
-                trainable = TrainableDenseNet201ABNCFGAP(dataset_name=dn)
-                trainable.new_proceadure('DENSENET201_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableDenseNet201ABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('DENSENET201_ABN_CF_GAP', i)
             case 'DENSENET201_ABN_VIT_CF_GAP':
                 trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
                 trainable.new_proceadure('DENSENET201_ABN_VIT_CF_GAP')
@@ -67,35 +69,46 @@ if __name__ == '__main__':
                     trainable = ResNet50Baseline(dataset_name=dn)
                     trainable.procedure_repeated_holdout('RESNET50', i)
             case 'DENSENET201':
-                trainable = TrainableDenseNet201Baseline(dataset_name=dn)
-                trainable.new_proceadure('DENSENET201')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableDenseNet201Baseline(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('DENSENET201', i)
             case 'EFFICIENTNET':
-                trainable = TrainableEfficientNetBaseline(dataset_name=dn)
-                trainable.new_proceadure('EFFICIENTNET')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableEfficientNetBaseline(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('EFFICIENTNET', i)
             case 'EFFICIENTNET_ABN_CF_GAP':
-                trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
-                trainable.new_proceadure('EFFICIENTNET_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableEfficientNetABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('EFFICIENTNET_ABN_CF_GAP', i)
             case 'COATNETB0':
-                trainable = TrainableCoatNetBaseline(dataset_name=dn)
-                trainable.new_proceadure('COATNETB0')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableCoatNetBaseline(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('COATNETB0', i)
             case 'COATNET_ABN_CF_GAP':
-                trainable = TrainableCoatNetABNCFGAP(dataset_name=dn)
-                trainable.new_proceadure('COATNET_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableCoatNetABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('COATNET_ABN_CF_GAP', i)
             case 'CONVNEXT_ABN_CF_GAP':
-                trainable = TrainableConvNextABNCFGAP(dataset_name=dn)
-                trainable.new_proceadure('CONVNEXT_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableConvNextABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('CONVNEXT_ABN_CF_GAP', i)
             case 'CONVNEXT_SMALL':
-                trainable = TrainableConvNextSmall(dataset_name=dn)
-                trainable.new_proceadure('CONVNEXT_SMALL')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableConvNextSmall(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('CONVNEXT_SMALL', i)
             case 'RESNEXT50':
-                trainable = TrainableResNextBaseline(dataset_name=dn)
-                trainable.procedure('RESNEXT50')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableResNextBaseline(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('RESNEXT50', i)
             case 'RESNEXT_ABN_CF_GAP':
-                trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
-                trainable.procedure('RESNEXT50_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableResNet50ABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('RESNEXT50_ABN_CF_GAP', i)
             case 'UNIFORMER_BASELINE':
-                trainable = TrainableUniformerBaseline(dataset_name=dn)
-                trainable.procedure('UNIFORMER_BASELINE')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableUniformerBaseline(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('UNIFORMER_BASELINE', i)
             case 'UNIFORMER_ABN_CF_GAP':
-                trainable = TrainableUniformerABNCFGAP(dataset_name=dn)
-                trainable.procedure('UNIFORMER_ABN_CF_GAP')
+                for i in range(REPEATED_HOLDOUT_REPEATS):
+                    trainable = TrainableUniformerABNCFGAP(dataset_name=dn)
+                    trainable.procedure_repeated_holdout('UNIFORMER_ABN_CF_GAP', i)

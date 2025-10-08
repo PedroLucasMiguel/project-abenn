@@ -131,7 +131,8 @@ def get_cam_metrics(model, identifier, dataset_name, imgs_dir, repeatet_holdout_
         metrics_json[img_name] = {"coherency": float(m1), "complexity": float(m2), "average_drop": float(m3),
                                   "adcc": float(adcc)}
 
-        cv2.imwrite(os.path.join(output_folder, "cams", f"i1_{img_name}.png") if repeatet_holdout_index == -1 else os.path.join(output_folder, "cams", f"i1_{img_name}_{repeatet_holdout_index}.png"), i1)
+        #cv2.imwrite(os.path.join(output_folder, "cams", f"i1_{img_name}.png") if repeatet_holdout_index == -1 else os.path.join(output_folder, "cams", f"i1_{img_name}_{repeatet_holdout_index}.png"), i1)
+        cv2.imwrite(os.path.join(output_folder, "cams", f"i1_{img_name}.png"), i1)
         #cv2.imwrite(f"{output_folder}/cams/i2_{img_name}.png" if repeatet_holdout_index == -1 else f"{output_folder}/cams/i1_{img_name}_{repeatet_holdout_index}.png", i2)
 
     with open(os.path.join(output_folder, "cam_metrics.json") if repeatet_holdout_index == -1 else os.path.join(output_folder, f"cam_metrics_{repeatet_holdout_index}.json"), "w") as f:

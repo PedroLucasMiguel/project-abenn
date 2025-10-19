@@ -65,6 +65,7 @@ class TrainableResNet50ABNCFGAP(TrainerFramework):
         self.optimizer.zero_grad()
         x, y = batch[0].to(self.device), batch[1].to(self.device)
         y_pred = self.trainable_model(x)
+        print(y_pred.shape)
         loss = self.criterion(y_pred, y)
         att = np.asarray(self.trainable_model.att.detach().cpu())
 
@@ -92,6 +93,7 @@ class TrainableResNet50ABNCFGAP(TrainerFramework):
         with no_grad():
             x, y = batch[0].to(self.device), batch[1].to(self.device)
             y_pred = self.trainable_model(x)
+            print(y_pred.shape, y.shape)
             return y_pred, y
 
 class ResNet50Baseline(TrainerFramework):

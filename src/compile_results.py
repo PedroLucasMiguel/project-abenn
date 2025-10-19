@@ -90,6 +90,60 @@ def compile_results(json_path_1, json_path_2) -> None:
 
         i += 1
 
+def compile_results(json_path_1, json_path_2) -> None:
+    f = open(json_path_1, "r")
+    js1 = json.load(f)
+    f.close()
+
+    f = open(json_path_2, "r")
+    js2 = json.load(f)
+    f.close()
+
+    n_samples = len(js1.keys())
+    n_metrics = len(js1[list(js1.keys())[0]])
+
+    results = np.zeros(shape=(n_metrics, 2))
+    sumns = np.zeros(shape=(n_metrics, 2), dtype=np.float64)
+
+    for k in js1.keys():
+        j = 0
+        for m in js1[k].keys():
+
+            sumns[j][0] += js1[k][m]
+            sumns[j][1] += js2[k][m]
+
+            if m == "coherency" or m == "adcc":
+                if js1[k][m] > js2[k][m]:
+                    results[j][0] += 1
+                elif js1[k][m] == js2[k][m]:
+                    results[j][0] += 1
+                    results[j][1] += 1
+                else:
+                    results[j][1] += 1
+
+            else:
+                if js1[k][m] < js2[k][m]:
+                    results[j][0] += 1
+                elif js1[k][m] == js2[k][m]:
+                    results[j][0] += 1
+                    results[j][1] += 1
+                else:
+                    results[j][1] += 1
+
+            j += 1
+
+    m_labels = {0: "Coherency", 1: "Complexity", 2: "Average Drop", 3: "ADCC"}
+
+    i = 0
+
+    for r in results:
+        # print(
+        #     f"{m_labels[i]} in the {'FIRST' if r[0] > r[1] else 'SECOND'} model is better in {abs((((r[0] / n_samples) - (r[1] / n_samples)) * 100)):2f}% more cases")
+        print(
+            f"{m_labels[i]} is {(sumns[i][0] / n_samples)*100} | {(sumns[i][1] / n_samples)*100}\n")
+
+        i += 1
+
 
 if __name__ == "__main__":
     #models_to_compare = ['RESNET50_ABN_CF_GAP', 'RESNET50']
@@ -121,19 +175,19 @@ if __name__ == "__main__":
 
     i = 0
     with open(f'../tables/{models_to_compare[MODEL]}.txt', 'w') as file:
-        # file.writelines(headers)
-        # for f in folders:
-        #     compile_result_to_table(f"../output/{models_to_compare[MODEL]}/{f}/cam_metrics.json", f.split('_')[0], file, i)
-        #     i += 1
-        # file.write('\\midrule\n')
-        # means = np.mean(toMean, axis=0)
-        # file.write(f'\\textbf{{Mean}} & {round(means[0], 2)} & {round(means[1], 2)} & {round(means[2], 2)} & {round(means[3], 2)} \\\\\n')
-        # file.writelines(footer)
-
+        file.writelines(headers)
         for f in folders:
-            print(f"{'=' * 80}\n")
-            print(f"\tResults from folder: {f}\n")
+            compile_result_to_table(f"../output/{models_to_compare[MODEL]}/{f}/cam_metrics.json", f.split('_')[0], file, i)
+            i += 1
+        file.write('\\midrule\n')
+        means = np.mean(toMean, axis=0)
+        file.write(f'\\textbf{{Mean}} & {round(means[0], 2)} & {round(means[1], 2)} & {round(means[2], 2)} & {round(means[3], 2)} \\\\\n')
+        file.writelines(footer)
 
-            compile_results(f"../output/{models_to_compare[0]}/{f}/cam_metrics.json",
-                        f"../output/{models_to_compare[1]}/{f}/cam_metrics.json")
-            print(f"\n{'=' * 80}")
+        # for f in folders:
+        #     print(f"{'=' * 80}\n")
+        #     print(f"\tResults from folder: {f}\n")
+
+        #     compile_results(f"../output/{models_to_compare[0]}/{f}/cam_metrics.json",
+        #                 f"../output/{models_to_compare[1]}/{f}/cam_metrics.json")
+        #     print(f"\n{'=' * 80}")

@@ -489,6 +489,87 @@ class TrainerFramework(ABC):
         
         get_cam_metrics(model, output_folder_name,
                         self.dataset_name, test_dataset_dir, dt_index)
+        
+    def procedure_repeated_holdout_test(self, output_folder_name: str, dt_index: int):
+        model = self.model
+
+        if self.dataset_name == 'CR':
+            self.dataset_name = f'CR_2_CV'
+        elif self.dataset_name == 'LA':
+            self.dataset_name = f'LA_4_CV'
+        elif self.dataset_name == 'LG':
+            self.dataset_name = f'LG_2_CV'
+        elif self.dataset_name == 'NHL':
+            self.dataset_name = f'NHL_3_CV'
+        elif self.dataset_name == 'UCSB':
+            self.dataset_name = f'UCSB_2_CV'
+
+        model = model.load_state_dict(load(os.path.join('..', 'output', output_folder_name, self.dataset_name, ' '.join(
+            f for f in os.listdir(os.path.join('..', 'output', output_folder_name, self.dataset_name)) if f.startswith(f'train_{dt_index}')))))
+        
+        try:
+            os.mkdir(os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'tests_with_classes'))
+        except OSError as error:
+            pass
+
+        test_files = os.listdir(os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'test'))
+
+        for test_file in test_files:
+            index = test_file.split('_')[0]
+            try:
+                os.mkdir(os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'tests_with_classes', f'{index}'))
+            except:
+                pass
+                
+            files_in_tests_with_classes = os.listdir(os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'tests_with_classes', f'{index}'))
+            if test_file in files_in_tests_with_classes:
+                continue
+            else:
+                shutil.copyfile(os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'test', test_file),
+                                os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'tests_with_classes', f'{index}', test_file))
+
+        test_loader = self.__get_test_loader(
+            self.__get_test_dataset(os.path.join('..', 'datasets', f'{self.dataset_name}_{dt_index}', 'tests_with_classes')))
+
+        final_json = {}
+
+        # Pytorch-ignite bit
+        val_metrics = {
+            "accuracy": Accuracy(),
+            "precision": Precision(average='weighted'),
+            "recall": Recall(average='weighted'),
+            "f1": (Precision(average='weighted') * Recall(average='weighted') * 2 / (
+                Precision(average='weighted') + Recall(average='weighted'))),
+            "loss": Loss(self.criterion)
+        }
+        validator = Engine(self.val_step)
+
+        # Attaching metrics
+        for name, metric in val_metrics.items():
+            metric.attach(validator, name)
+
+        val_bar = ProgressBar(desc="Evaluating...")
+        # train_bar.attach(trainer)
+        val_bar.attach(validator)
+
+        @validator.on(Events.EPOCH_COMPLETED)
+        def log_validation_results(ig_validator):
+            metrics = validator.state.metrics
+
+            final_json[ig_validator.state.epoch] = metrics
+
+            print(
+                f'Validation Results - Epoch[{ig_validator.state.epoch}] {final_json[ig_validator.state.epoch]}')
+
+        print(
+            f'\Getting {self.dataset_name} dataset metrics on iteration {dt_index}')
+
+        # Running everything for self.epochs
+        validator.run(test_loader, max_epochs=1)
+
+        # Exporting metrics files
+        with open(os.path.join('..', 'output', output_folder_name, self.dataset_name, f'test_results_{dt_index}.json'), 'w') as f:
+            json.dump(final_json, f)
 
 
     def procedure(self, output_folder_name: str):

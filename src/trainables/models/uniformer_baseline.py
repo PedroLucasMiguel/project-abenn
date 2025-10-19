@@ -117,8 +117,12 @@ class Attention(nn.Module):
                 temp_attn = (1 - tradeoff) * global_attn[:, :(N - 2)] + tradeoff * cls_attn
                 global_attn = torch.cat((temp_attn, global_attn[:, (N - 2):]), dim=1)
             else:
-                # no use torch.cat() for fast inference
-                global_attn[:, :(N - 2)] = (1 - tradeoff) * global_attn[:, :(N - 2)] + tradeoff * cls_attn
+                # 1. Calculate the new values for the first (N-2) elements
+                modified_part = (1 - tradeoff) * global_attn[:, :(N - 2)] + tradeoff * cls_attn
+                # 2. Get the unchanged last 2 elements
+                unmodified_part = global_attn[:, (N - 2):]
+                # 3. Concatenate them along dimension 1 to create a new tensor
+                global_attn = torch.cat([modified_part, unmodified_part], dim=1)
 
         attn = self.attn_drop(attn)
 
@@ -256,10 +260,9 @@ class EvoSABlock(nn.Module):
 
             cls_token, x = x[:, :1, :], x[:, 1:-1, :]
             if self.training:
-                x_sorted = torch.cat((x, x_drop), dim=1)
+                x_sorted = torch.cat((x, x_drop), dim=1).contiguous()
             else:
-                x_sorted[:, N_:] = x_drop
-                x_sorted[:, :N_] = x
+                x_sorted = torch.cat((x, x_drop), dim=1).contiguous()
 
             # recover token
             # scale for normalization

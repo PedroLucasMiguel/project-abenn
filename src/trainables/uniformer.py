@@ -14,7 +14,7 @@ class TrainableUniformerBaseline(TrainerFramework):
   def __init__(self, dataset_name: str) -> None:
     self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
     self.trainable_model = uniformer_xs()
-    self.trainable_model.load_state_dict(load('/Users/pedro/git/project-abenn/uniformer_xs_224_in1k.pth'), strict=False)
+    self.trainable_model.load_state_dict(load('C:\\git\\project-abenn\\uniformer_xs_224_in1k.pth'), strict=False)
     self.trainable_model.head = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
     self.trainable_model.head_cls = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
 
@@ -51,7 +51,7 @@ class TrainableUniformerABNCFGAP(TrainerFramework):
   def __init__(self, dataset_name: str) -> None:
     self.n_classes = len(os.listdir(f"../datasets/{dataset_name}"))
     self.trainable_model = uniformer_xs_abn_cf_gap()
-    self.trainable_model.load_state_dict(load('/Users/pedro/git/project-abenn/uniformer_xs_224_in1k.pth'), strict=False)
+    self.trainable_model.load_state_dict(load('C:\\git\\project-abenn\\uniformer_xs_224_in1k.pth'), strict=False)
     self.trainable_model.head = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
     self.trainable_model.head_cls = nn.Linear(self.trainable_model.embed_dim[-1], self.n_classes)
 

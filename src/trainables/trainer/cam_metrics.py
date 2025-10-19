@@ -37,16 +37,11 @@ def get_grad_cam(model, class_to_backprop: int = 0, img_name=None, img=None):
 
     model = model.to(device)
 
-    if model.__class__.__name__ == "UniFormer_Light" or model.__class__.__name__ == "UniFormer_Light_ABN_CF_GAP":
-        model.train()
-    else:
-        model.eval()
+    model.eval()
 
     # Obtendo a classificação do modelo e calculando o gradiente da maior classe
     if model.__class__.__name__ == "ResNet":
         outputs = model(input_batch)[1]
-    elif model.__class__.__name__ == "UniFormer_Light" or model.__class__.__name__ == "UniFormer_Light_ABN_CF_GAP":
-        outputs = model(input_batch)[0]
     else:
         outputs = model(input_batch)
 
